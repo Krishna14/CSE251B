@@ -5,16 +5,17 @@ def iou(pred, target):
         target - Target sample
     """
     ious = []
-    for cls in range(n_class):
-        # Complete this function
-        #Gautham: Completed assuming pred and target are tuples with each image in them being for a particular class
-        intersection = numpy.logical_and(pred[cls], target[cls])# intersection calculation
-        union = numpy.logical_or(pred[cls], target[cls])#Union calculation
-        if union == 0:
-            ious.append(float('nan'))  # if there is no ground truth, do not include in evaluation
-        else:
-            ious.append(float(intersection/union))# Append the calculated IoU to the list ious
-    avg_iou = np.mean(np.array(ious[0:26]))
+    for i in range(len(pred)):
+        for cls in range(n_class):
+            # Complete this function
+            #Gautham: Completed assuming pred and target are tuples with each image in them being for a particular class
+            intersection = numpy.logical_and(pred[i][cls], target[i][cls])# intersection calculation
+            union = numpy.logical_or(pred[i][cls], target[i][cls])#Union calculation
+            if union == 0:
+                ious[i].append(float('nan'))  # if there is no ground truth, do not include in evaluation
+            else:
+                ious[i].append(float(intersection/union))# Append the calculated IoU to the list ious
+        avg_iou.append(np.mean(np.array(ious[i][0:26])))
     return ious
 
 
@@ -25,9 +26,10 @@ def pixel_acc(pred, target):
     """
     #Complete this function
     accs = []
-    h, w = target[0].shape
-    for cls in range(n_class):
-        if cls!=26:
-            accs.append(float(sum(pred[cls] == target[cls])/(h*w)))
-    avg_acc = np.mean(np.array(accs))   
+    for i in range(len(pred)):
+        h, w = target[i][0].shape #shape of prediction in each image per class
+        for cls in range(n_class):
+            if cls!=26:
+                accs[i].append(float(sum(pred[i][cls] == target[i][cls])/(h*w)))
+        avg_acc = np.mean(np.array(accs[i][:]))   
     return avg_acc
