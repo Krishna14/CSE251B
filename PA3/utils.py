@@ -25,7 +25,7 @@ def pixel_acc(pred, target):
     """
     #Complete this function
     accs = []
-    h, w = label.target[0]
+    h, w = target[0].shape
     for cls in range(n_class):
         if cls!=26:
             accs.append(float(sum(pred[cls] == target[cls])/(h*w)))
