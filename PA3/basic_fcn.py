@@ -40,13 +40,14 @@ class FCN(nn.Module):
         score = self.relu(out_encoder)
         
         # Implementing transposed convolution layers
-        tr1 = self.bn1(self.deconv1(score))
-        tr2 = self.bn2(self.deconv2(tr1))
-        tr3 = self.bn3(self.deconv3(tr2))
-        tr4 = self.bn4(self.deconv4(tr3))
-        out_decoder = self.bn5(self.deconv5(tr4))
+        tr1 = self.bn1(self.relu(self.deconv1(score)))
+        tr2 = self.bn2(self.relu(self.deconv2(tr1)))
+        tr3 = self.bn3(self.relu(self.deconv3(tr2)))
+        tr4 = self.bn4(self.relu(self.deconv4(tr3)))
+        out_decoder = self.bn5(self.relu(self.deconv5(tr4)))
         
-        # Complete the forward function for the rest of the decoder     
+        # Complete the forward function for the rest of the decoder 
+        #self.sigmoid = nn.Sigmoid()
         score = self.classifier(out_decoder)
         
         return score  # size=(N, n_class, x.H/1, x.W/1)

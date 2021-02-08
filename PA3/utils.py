@@ -1,24 +1,46 @@
+import numpy as np
 def iou(pred,target):
-    ious = []
+    pred = pred.cpu().numpy()
+    target = target.cpu().numpy()
+    ious = [None]*len(pred) 
     avg_iou = []
+    n_class = 27
     for i in range(len(pred)):
+        temp_row = []
         for cls in range(n_class): # Go over all classes
-            intersection=float(sum((pred[i][:]==target[i][:])*(target[i][:]==cls)))# per class Intersection
-            union=sum(target[i][:]==cls)+sum(pred[i][:]==cls)-intersection # per class Union
+            intersection=np.float32(np.sum((pred[i][:]==target[i][:])*(target[i][:]==cls)))# per class Intersection
+            union=np.sum(target[i][:]==cls)+np.sum(pred[i][:]==cls)-intersection # per class Union
             if union == 0:
-                ious[i].append(float('nan'))  # if there is no ground truth, do not include in evaluation
+                #temp_row.append(np.float32('nan'))  # if there is no ground truth, do not include in evaluation
+                temp_row.append(0) 
             else:
-                ious[i].append(intersection/union)# Append the calculated IoU to the list ious
-        avg_iou[i] = np.mean(np.array(ious[i][0:26])) #discarding class=26
-    return ious
+                temp_row.append(intersection/union)# Append the calculated IoU to the list ious
+        ious[i] = temp_row
+    ious = np.array(ious)
+    ious = np.mean(ious, axis=0)
+    ious_disc = ious[:-1] #discarding class=26
+    avg_iou = np.mean(ious_disc) 
+    return ious,avg_iou
 
 def pixel_acc(pred, target):
-    accs = []
+    pred = pred.cpu().numpy()
+    target = target.cpu().numpy()
+    accs = [None]*len(pred)
+    n_class = 27
     for i in range(len(pred)):
-        h, w = target[i].shape
+        temp_row = []
         for cls in range(n_class):
             #shape of prediction in each image per class
-            if cls!=26:
-                accs[i].append(float(sum(pred[i][cls] == target[i][cls])/(h*w)))
-        avg_acc = np.mean(np.array(accs[i][:]))   
+            intersection=np.float32(np.sum((pred[i][:]==target[i][:])*(target[i][:]==cls)))
+            denominator = np.sum(target[i][:]==cls)
+            if denominator == 0:
+                #temp_row.append(np.float32('nan'))  # if there is no ground truth, do not include in evaluation
+                temp_row.append(0) 
+            else:
+                temp_row.append(intersection/denominator)# Append the calculated IoU to the list ious
+        
+        accs[i] = temp_row
+    accs = np.array(accs)
+    accs = accs[:-1]
+    avg_acc = np.mean(accs)   
     return avg_acc
