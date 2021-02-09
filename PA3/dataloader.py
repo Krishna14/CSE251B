@@ -54,7 +54,7 @@ class IddDataset(Dataset):
         self.mode = csv_file
         
         # Add any transformations here
-        
+        self.resize_transform = transforms.Resize((256, 256), Image.NEAREST)
         # The following transformation normalizes each channel using the mean and std provided
         self.transforms = transforms.Compose([transforms.ToTensor(),
                                               transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),])
@@ -68,6 +68,9 @@ class IddDataset(Dataset):
         img = Image.open(img_name).convert('RGB')
         label_name = self.data.iloc[idx, 1]
         label = Image.open(label_name)
+        
+        img = self.resize_transform(img)     # added, resize to (256, 256) using nn 
+        label = self.resize_transform(label)
         
         img = np.asarray(img) / 255. # scaling [0-255] values to [0-1]
         label = np.asarray(label)
