@@ -25,22 +25,32 @@ import torch
 
 def iou(pred, target):
     torch.backends.cudnn.enabled = True
+    torch.set_printoptions(precision=8)
     ious = []
-    union = torch.zeros(pred.shape[0]).long().cuda()
     int_sum = torch.zeros(pred.shape[0]).long().cuda()
+    uni_sum = torch.zeros(pred.shape[0]).long().cuda()
     n_class = 27
-    for cls in range(0,n_class):
-        # Complete this function
+    for cls in range(0,n_class-1): #do not include unlabeled class (26)
         tens = torch.Tensor(np.full(pred.shape, cls)).long().cuda()
         a = (pred == tens)
         b = (target == tens)
         intersection = torch.sum( a & b , dim=(1,2))
+        #print("Intersection for cls {} = {}".format(cls,intersection))
         int_sum = int_sum + intersection
-        union = union + torch.sum( a | b, dim=(1,2))
+        union = torch.sum( a | b, dim=(1,2))
+        #print("Union for cls {} = {}".format(cls,union))
+        #iou = torch.Tensor.float(torch.div(intersection.type(torch.LongTensor), union.type(torch.LongTensor)).cuda())
+        iou = torch.Tensor.float(torch.Tensor.float(intersection)/torch.Tensor.float(union))
+        iou = iou[union!=0]
+        iou = torch.mean(iou)    
+        uni_sum = uni_sum + union
+        #print("Appending to ious: ",iou)
+        ious.append(iou)
     int_sum = torch.Tensor.float(int_sum)
-    union = torch.Tensor.float(union)
-    avg_iou = torch.mean(torch.Tensor.float(int_sum/union))
-    return None,float(avg_iou)
+    uni_sum = torch.Tensor.float(uni_sum)
+    avg_iou = torch.mean(torch.Tensor.float(int_sum/uni_sum))
+    #print("Returning back from utils.py iou")
+    return ious,float(avg_iou)
 
 # def iou(pred, target):
 #     torch.backends.cudnn.enabled = True
@@ -72,8 +82,7 @@ def pixel_acc(pred, target):
     total = torch.zeros(pred.shape[0]).long().cuda()
     int_sum = torch.zeros(pred.shape[0]).long().cuda()
     n_class = 27
-    for cls in range(0,n_class):
-        # Complete this function
+    for cls in range(0,n_class-1): #do not include unlabeled class (26)
         tens = torch.Tensor(np.full(pred.shape, cls)).long().cuda()
         a = (pred == tens)
         b = (target == tens)
