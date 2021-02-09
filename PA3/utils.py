@@ -22,10 +22,11 @@ import torch
 #     ious_disc = ious[:-1] #discarding class=26
 #     avg_iou = np.mean(ious_disc) 
 #     return ious,avg_iou
+
 def iou(pred, target):
     torch.backends.cudnn.enabled = True
     ious = []
-    total = torch.zeros(pred.shape[0]).long().cuda()
+    union = torch.zeros(pred.shape[0]).long().cuda()
     int_sum = torch.zeros(pred.shape[0]).long().cuda()
     n_class = 27
     for cls in range(0,n_class):
@@ -35,14 +36,35 @@ def iou(pred, target):
         b = (target == tens)
         intersection = torch.sum( a & b , dim=(1,2))
         int_sum = int_sum + intersection
-        union = torch.sum( a | b, dim=(1,2))
-        iou = torch.div(intersection, union.type(torch.LongTensor).cuda())
-        iou[iou != iou] = 0
-        ious.append(float(torch.sum(iou)/pred.shape[0]))
-        #ious_disc = ious[:-1] #discarding class=26
-#     avg_iou = np.mean(ious_disc) 
-    ious = np.array(ious)
-    return ious, np.mean(ious)
+        union = union + torch.sum( a | b, dim=(1,2))
+    int_sum = torch.Tensor.float(int_sum)
+    union = torch.Tensor.float(union)
+    avg_iou = torch.mean(torch.Tensor.float(int_sum/union))
+    return None,float(avg_iou)
+
+# def iou(pred, target):
+#     torch.backends.cudnn.enabled = True
+#     ious = []
+#     n_class = 27
+#     for cls in range(0,n_class-1):
+#         # Complete this function
+#         tens = torch.Tensor(np.full(pred.shape, cls)).long().cuda()
+#         a = (pred == tens)
+#         b = (target == tens)
+#         intersection = torch.sum( a & b , dim=(1,2))
+#         union = torch.sum( a | b, dim=(1,2))
+#         iou = torch.div(intersection, union.type(torch.LongTensor).cuda())
+#         iou[iou != iou] = 0
+#         iou_mean = torch.mean(torch.Tensor.float(iou))
+#         ious.append(iou_mean)
+#         print("Appended {} to ious[{}]".format(iou_mean,cls))
+#         #ious.append(float(torch.sum(iou)/pred.shape[0]))
+#         #ious_disc = ious[:-1] #discarding class=26
+# #     avg_iou = np.mean(ious_disc) 
+#     ious = np.array(ious)
+#     avg_iou = float(np.sum(ious)/len(ious))
+#     print("Average iou before returning = ",avg_iou) #-> Messed up
+#     return ious,avg_iou
     
 def pixel_acc(pred, target):
     torch.backends.cudnn.enabled = True
