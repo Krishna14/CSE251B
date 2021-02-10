@@ -32,41 +32,26 @@ class unet(nn.Module):
     def forward(self, x):
         # TODO: Modified both values (coefficient of ReLU and the coefficient of x)
         x1 = self.bnd1(self.relu(self.conv1(x)))
-#         print("x1: ",x1.shape)
         x2 = self.bnd2(self.relu(self.conv2(x1)))
-#         print("x2: ",x2.shape)
         x3 = self.bnd3(self.relu(self.conv3(x2)))
-#         print("x3: ",x3.shape)
         x4 = self.bnd4(self.relu(self.conv4(x3)))
-#         print("x4: ",x4.shape)
         out_encoder = self.bnd5(self.relu(self.conv5(x4)))
-#         print("out_encoder: ",out_encoder.shape)
         
         # Call ReLU here
         score = self.relu(out_encoder)
         
         # Implementing transposed convolution layers
         tr1 = self.bn1(self.relu(self.deconv1(score)))
-#         print("tr1: ",tr1.shape)
-#         print("x4tr1: ", torch.cat((x4, tr1), 1).shape)
         x4tr1 = torch.cat((x4, tr1), 1)
         tr2 = self.bn2(self.relu(self.deconv2(x4tr1)))
-#         print("tr2: ",tr2.shape)
-#         print("x3tr2: ", torch.cat((x3, tr2), 1).shape)
         x3tr2 = torch.cat((x3, tr2), 1)
         tr3 = self.bn3(self.relu(self.deconv3(x3tr2)))
-#         print("tr3: ",tr3.shape)
-#         print("x2tr3: ", torch.cat((x2, tr3), 1).shape)
         x2tr3 = torch.cat((x2, tr3), 1)
         tr4 = self.bn4(self.relu(self.deconv4(x2tr3)))
-#         print("tr4: ",tr4.shape)
-#         print("x1tr4: ", torch.cat((x1, tr4), 1).shape)
         x1tr4 = torch.cat((x1, tr4), 1)
         out_decoder = self.bn5(self.relu(self.deconv5(x1tr4)))
-#         print("out_decoder: ",out_decoder.shape)
         
         # Complete the forward function for the rest of the decoder 
-        #self.sigmoid = nn.Sigmoid()
         score = self.classifier(out_decoder)
         
         return score  # size=(N, n_class, x.H/1, x.W/1)

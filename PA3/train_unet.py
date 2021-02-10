@@ -17,9 +17,9 @@ val_dataset = IddDataset(csv_file='val.csv')
 test_dataset = IddDataset(csv_file='test.csv')
 
 
-train_loader = DataLoader(dataset=train_dataset, batch_size=3, num_workers=4, shuffle=True)
-val_loader = DataLoader(dataset=val_dataset, batch_size=3, num_workers=4, shuffle=True)
-test_loader = DataLoader(dataset=test_dataset, batch_size=3, num_workers=4, shuffle=False)
+train_loader = DataLoader(dataset=train_dataset, batch_size=6, num_workers=4, shuffle=True)
+val_loader = DataLoader(dataset=val_dataset, batch_size=6, num_workers=4, shuffle=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=6, num_workers=4, shuffle=False)
 
 
 def init_weights(m):
@@ -41,7 +41,7 @@ if use_gpu:
         
 def train():
     print("starting training")
-    best_iou = 0
+    best_val_loss = float('inf')
     train_losses = []
     val_losses = []
     for epoch in range(epochs):
@@ -70,9 +70,9 @@ def train():
         train_losses.append(sum(train_loss_batch)/len(train_loss_batch))
         val_loss, val_iou = val(epoch)
         val_losses.append(val_loss)
-        if val_iou > best_iou:
-            best_iou = val_iou
-            print("best iou achieved, saving model")
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            print("best val loss achieved, saving model")
             torch.save(unet_model, 'unet')
         if epoch >= 5:
             stop = 0
