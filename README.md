@@ -21,5 +21,5 @@ This repository contains the details of the implementation of different programm
 2. For the other parts in the assignment, run the respective parts of the code 3(d), 3(e) and 3(f).
 3. Part (f) has three subparts to it. The first one could be run by 3(f).ipynb and the other could be run using Q3(f).ipynb
 
-# PA 3 - Collaborators - Sreekrishna, Gautham and Akshaya
+# PA 3 - Collaborators - Sreekrishna, Gautham, Akshaya, Justin and Tri Truong
 1. Currently, this assignment is under construction.
