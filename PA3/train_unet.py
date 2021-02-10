@@ -1,5 +1,5 @@
 from torchvision import utils
-from basic_fcn import *
+from unet import *
 from dataloader import *
 from utils import *
 import torchvision
@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 import time
+import matplotlib.pyplot as plt
 
 
 # TODO: Some missing values are represented by '__'. You need to fill these up.
@@ -28,20 +29,24 @@ def init_weights(m):
 
 epochs = 100        
 criterion = nn.CrossEntropyLoss() # Choose an appropriate loss function from https://pytorch.org/docs/stable/_modules/torch/nn/modules/loss.html
-fcn_model = FCN(n_class=n_class)
-fcn_model.apply(init_weights)
+unet_model = unet(n_class=n_class)
+unet_model.apply(init_weights)
 
-optimizer = optim.Adam(fcn_model.parameters(), lr=5e-3)
+optimizer = optim.Adam(unet_model.parameters(), lr=5e-3)
 
 use_gpu = torch.cuda.is_available()
 if use_gpu:
-    fcn_model = fcn_model.cuda()
+    unet_model = unet_model.cuda()
 
         
 def train():
     print("starting training")
+    best_iou = 0
+    train_losses = []
+    val_losses = []
     for epoch in range(epochs):
         ts = time.time()
+        train_loss_batch = []
         for iter, (X, tar, Y) in enumerate(train_loader):
             optimizer.zero_grad()
 
@@ -51,24 +56,39 @@ def train():
             else:
                 inputs, labels = X, Y# Unpack variables into inputs and labels
 
-            outputs = fcn_model(inputs)
+            outputs = unet_model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            train_loss_batch.append(loss.item())
 
-            if iter % 500 == 0:
+            if iter % 400 == 0:
                 print("epoch{}, iter{}, loss: {}".format(epoch, iter, loss.item()))
         
         print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
-        torch.save(fcn_model, 'best_model')
 
-        val(epoch)
-        fcn_model.train()
-    
+        train_losses.append(sum(train_loss_batch)/len(train_loss_batch))
+        val_loss, val_iou = val(epoch)
+        val_losses.append(val_loss)
+        if val_iou > best_iou:
+            best_iou = val_iou
+            print("best iou achieved, saving model")
+            torch.save(unet_model, 'unet')
+        if epoch >= 5:
+            stop = 0
+            for i in range(0,5):
+                if val_losses[epoch-i] > val_losses[epoch-i-1]:
+                    stop = stop + 1
+            if stop == 5 :
+                print ("EarlyStop after %d epochs." % (epoch))
+                return train_losses, val_losses
+        unet_model.train()
+        print("-" * 20)
+    return train_losses, val_losses
 
 
 def val(epoch):
-    fcn_model.eval() # Don't forget to put in eval mode !
+    unet_model.eval() # Don't forget to put in eval mode !
     #Complete this function - Calculate loss, accuracy and IoU for every epoch
     # Make sure to include a softmax after the output from your model
     val_loss = []
@@ -81,32 +101,90 @@ def val(epoch):
                 val_labels = Y.cuda()# Move your labels onto the gpu
             else:
                 inputs, val_labels = X, Y#.long()# Unpack variables into inputs and labels
-            outputs = fcn_model(inputs)
+            outputs = unet_model(inputs)
             loss = criterion(outputs, val_labels)
             loss = torch.unsqueeze(loss,0)
             loss = loss.mean()
             val_loss.append(loss.item())
-#             if itera % 100 == 0:
-#                 print("VALIDATION: iter{}, loss: {}".format(itera, loss.item()))
             predictions = F.softmax(outputs,1)
             predictions = torch.argmax(predictions,dim=1)
             iou_row,avg_iou = iou(predictions,val_labels)
             val_iou.append(avg_iou)
             val_acc.append(pixel_acc(predictions,val_labels))
-#         val_loss = val_loss[:-1]
-#         val_iou = val_iou[:-1]
-#         val_acc = val_acc[:-1]
-        avg_loss = np.mean(np.asarray(val_loss))
-        avg_iou = np.mean(np.asarray(val_iou))
-        avg_acc = np.mean(np.asarray(val_acc))
+        avg_loss = np.mean(np.array(val_loss))
+        avg_iou = np.mean(np.array(val_iou))
+        avg_acc = np.mean(np.array(val_acc))
         print("Validation epoch {}: avg_iou = {}, avg_acc = {}".format(epoch,avg_iou,avg_acc))
-        return avg_loss, inputs   
+        return avg_loss, avg_iou
     
 def test():
-	fcn_model.eval()
+    unet_model = torch.load('unet')
+    unet_model.eval()
     #Complete this function - Calculate accuracy and IoU 
     # Make sure to include a softmax after the output from your model
-    
+    val_iou = []
+    val_acc = []
+    val_ious_cls = []
+    with torch.no_grad():
+        for itera, (X, tar, Y) in enumerate(val_loader):
+            if use_gpu:
+                inputs = X.cuda()# Move your inputs onto the gpu
+                test_labels = Y.cuda()# Move your labels onto the gpu
+            else:
+                inputs, test_labels = X,Y#.long()# Unpack variables into inputs and labels
+            outputs = unet_model(inputs)
+            predictions = torch.nn.functional.softmax(outputs,1)
+            # create one-hot encoding
+            predictions = torch.argmax(predictions,dim=1)
+            iou_row,avg_iou = iou(predictions,test_labels)
+            if iou_row is not None:
+                val_ious_cls.append(iou_row)
+            val_iou.append(avg_iou)
+            val_acc.append(pixel_acc(predictions,test_labels))
+        avg_iou = np.mean(np.asarray(val_iou))
+        avg_acc = np.mean(np.asarray(val_acc))
+        if iou_row is not None:
+            avg_ious_cls = np.nanmean(np.asarray(val_ious_cls),axis=0) #iou for the class when it's union=0 will be nan
+        print("Final test from best model : avg_iou = {}, avg_acc = {}".format(avg_iou,avg_acc))
+        print(" Class wise ious getting saved in unet_IOU_Classwise.csv file")
+        
+        if iou_row is not None:
+            d = []
+            labels_len = len(labels)
+            for idx in range(0,labels_len-1):
+                 d.append((labels[idx].name, avg_ious_cls[labels[idx].level3Id]))
+            df = pd.DataFrame(d, columns=('Label name', 'IoU'))
+            df.to_csv('unet_IOU_Classwise.csv', sep='\t')
+
+            test_loader = DataLoader(dataset=test_dataset, batch_size= 1, num_workers=4, shuffle=False)
+            for itera, (X, tar, Y) in enumerate(test_loader):
+                if use_gpu:
+                    inputs = X.cuda()# Move your inputs onto the gpu
+                    test_labels = Y.cuda()# Move your labels onto the gpu
+                else:
+                    inputs, test_labels = X, Y#.long() # Unpack variables into inputs and labels
+                outputs = unet_model(inputs)
+                predictions = torch.nn.functional.softmax(outputs,1)
+                predictions = torch.argmax(predictions,dim=1)
+                break
+            predictions = predictions.cpu().numpy()
+            inputImage = inputs[0].permute(1, 2, 0).cpu().numpy()
+            plt.imshow(inputImage, cmap='gray')
+            plt.show()
+            rows, cols = predictions.shape[1], predictions.shape[2]
+            #print(labels)
+            new_predictions = np.zeros((predictions.shape[1], predictions.shape[2], 3))
+            for row in range(rows):
+                for col in range(cols):
+                    idx = int(predictions[0][row][col])
+                    new_predictions[row][col][:] = np.asarray(labels[idx].color)       
+
+            plt.imshow(inputImage, cmap='gray')
+            plt.imshow(new_predictions, cmap='jet', alpha=0.5)
+            fig_name = "Overlayed_unet.jpg"  
+            plt.savefig(fig_name, dpi=300)
+            plt.show()
+
 if __name__ == "__main__":
     val(0)  # show the accuracy before training
     train()
