@@ -199,6 +199,7 @@ def test():
         #print("Detected labels in the image: ",unique_labels)
         plt.imshow(inputImage)#, cmap='gray')
         plt.imshow(new_predictions,alpha=0.5)#, cmap='jet', alpha=0.5)
+        plt.axis('off')
         fig_name = MODEL_NAME+"Overlayed.jpg"  
         plt.savefig(fig_name)
         plt.show()
