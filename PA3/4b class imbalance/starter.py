@@ -191,7 +191,7 @@ def test():
         df = pd.DataFrame(d, columns=('Label name', 'IoU'))
         df.to_csv(MODEL_NAME+"IOU_Classwise.csv", sep='\t')
 
-        test_loader = DataLoader(dataset=test_dataset, batch_size= 1, num_workers=4, shuffle=False)
+        test_loader = DataLoader(dataset=test_dataset, batch_size= 1, num_workers=8, shuffle=False)
         for itera, (X, tar, Y) in enumerate(test_loader):
             if use_gpu:
                 inputs = X.cuda()# Move your inputs onto the gpu
@@ -204,18 +204,21 @@ def test():
             break
         predictions = predictions.cpu().numpy()
         inputImage = inputs[0].permute(1, 2, 0).cpu().numpy()
-        plt.imshow(inputImage, cmap='gray')
+        plt.imshow(inputImage)#, cmap='gray')
         plt.show()
         rows, cols = predictions.shape[1], predictions.shape[2]
         #print(labels)
         new_predictions = np.zeros((predictions.shape[1], predictions.shape[2], 3))
+        #unique_labels = set()
         for row in range(rows):
             for col in range(cols):
                 idx = int(predictions[0][row][col])
-                new_predictions[row][col][:] = np.asarray(labels[idx].color)       
+                #unique_labels.add(labels[idx].name)
+                new_predictions[row][col][:] = np.asarray(labels[idx].color)/255       
 
-        plt.imshow(inputImage, cmap='gray')
-        plt.imshow(new_predictions, cmap='jet', alpha=0.5)
+        #print("Detected labels in the image: ",unique_labels)
+        plt.imshow(inputImage)#, cmap='gray')
+        plt.imshow(new_predictions,alpha=0.5)#, cmap='jet', alpha=0.5)
         fig_name = MODEL_NAME+"Overlayed.jpg"  
         plt.savefig(fig_name)
         plt.show()
