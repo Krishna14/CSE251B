@@ -16,10 +16,11 @@ train_dataset = IddDataset(csv_file='train.csv')
 val_dataset = IddDataset(csv_file='val.csv')
 test_dataset = IddDataset(csv_file='test.csv')
 
-
-train_loader = DataLoader(dataset=train_dataset, batch_size=6, num_workers=4, shuffle=True)
-val_loader = DataLoader(dataset=val_dataset, batch_size=6, num_workers=4, shuffle=True)
-test_loader = DataLoader(dataset=test_dataset, batch_size=6, num_workers=4, shuffle=False)
+BATCH_SIZE = 6
+NUM_WORKERS = 8
+train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
+val_loader = DataLoader(dataset=val_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=False)
 
 
 def init_weights(m):
@@ -28,7 +29,7 @@ def init_weights(m):
         torch.nn.init.zeros_(m.bias.data)        
 
 epochs = 100        
-criterion = nn.CrossEntropyLoss() # Choose an appropriate loss function from https://pytorch.org/docs/stable/_modules/torch/nn/modules/loss.html
+criterion = dice_coefficient_loss() # Choose an appropriate loss function from https://pytorch.org/docs/stable/_modules/torch/nn/modules/loss.html
 unet_model = unet(n_class=n_class)
 unet_model.apply(init_weights)
 
@@ -53,16 +54,17 @@ def train():
             if use_gpu:
                 inputs = X.cuda()# Move your inputs onto the gpu
                 labels = Y.cuda()# Move your labels onto the gpu
+                targets = tar.cuda()
             else:
-                inputs, labels = X, Y# Unpack variables into inputs and labels
+                inputs, targets, labels = X, tar, Y# Unpack variables into inputs and labels
 
             outputs = unet_model(inputs)
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
             train_loss_batch.append(loss.item())
 
-            if iter % 400 == 0:
+            if iter % 120 == 0:
                 print("epoch{}, iter{}, loss: {}".format(epoch, iter, loss.item()))
         
         print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
@@ -99,10 +101,11 @@ def val(epoch):
             if use_gpu:
                 inputs = X.cuda()# Move your inputs onto the gpu
                 val_labels = Y.cuda()# Move your labels onto the gpu
+                val_targets = tar.cuda()
             else:
-                inputs, val_labels = X, Y#.long()# Unpack variables into inputs and labels
+                inputs, val_targets, val_labels = X, tar, Y#.long()# Unpack variables into inputs and labels
             outputs = unet_model(inputs)
-            loss = criterion(outputs, val_labels)
+            loss = criterion(outputs, val_targets)
             loss = torch.unsqueeze(loss,0)
             loss = loss.mean()
             val_loss.append(loss.item())
@@ -114,7 +117,7 @@ def val(epoch):
         avg_loss = np.mean(np.array(val_loss))
         avg_iou = np.mean(np.array(val_iou))
         avg_acc = np.mean(np.array(val_acc))
-        print("Validation epoch {}: avg_iou = {}, avg_acc = {}".format(epoch,avg_iou,avg_acc))
+        print("Validation epoch {}: avg_dice_loss = {}, avg_iou = {}, avg_acc = {}".format(epoch,avg_loss,avg_iou,avg_acc))
         return avg_loss, avg_iou
     
 def test():

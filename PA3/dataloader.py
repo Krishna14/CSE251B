@@ -5,6 +5,7 @@ from PIL import Image
 import torch
 import pandas as pd
 from collections import namedtuple
+import random
 
 n_class    = 27
 
@@ -52,7 +53,15 @@ class IddDataset(Dataset):
         self.data      = pd.read_csv(csv_file)
         self.n_class   = n_class
         self.mode = csv_file
+        self.do_transform = False
         
+        #For 4a
+        if transforms_==True: #Augmenting the training dataset. Should be "True" only when we call train_dataloader.
+            frames = [self.data,self.data]
+            result = pd.concat(frames)
+            self.data = result
+            self.do_transform = True 
+            
         # Add any transformations here
         self.resize_transform = transforms.Resize((256, 256), Image.NEAREST)
         # The following transformation normalizes each channel using the mean and std provided
@@ -68,6 +77,31 @@ class IddDataset(Dataset):
         img = Image.open(img_name).convert('RGB')
         label_name = self.data.iloc[idx, 1]
         label = Image.open(label_name)
+
+#         #do any one transformation randomly, 
+#         if self.do_transform:
+#             #print("Applying transformation...")
+#            #there will be 2 copies of each image. 
+#             # So each copy will be transformed randomly.
+#             transform_type = random.randint(0,2)
+            
+#             if transform_type==0:
+#                 #using mirror flip
+#                 img = transforms.functional.hflip(img)
+#                 label = transforms.functional.hflip(label)
+
+#             elif transform_type==1:
+#                 #rotating the image 
+#                 rotate_transform = transforms.RandomRotation(30) 
+#                 img = rotate_transform(img)
+#                 label = rotate_transform(label)
+
+#             else:
+#                 #different crops 
+#                 #self.resize_transform = transforms.RandomResizedCrop(((256,256))) 
+#                 crop_transform = transforms.RandomCrop(((256,512))) 
+#                 img = crop_transform(img)
+#                 label = crop_transform(label)
         
         img = self.resize_transform(img)     # added, resize to (256, 256) using nn 
         label = self.resize_transform(label)

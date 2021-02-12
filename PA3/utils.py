@@ -1,5 +1,21 @@
 import numpy as np
 import torch 
+
+class dice_coefficient_loss(torch.nn.Module):
+    def init(self):
+        super(dice_coefficient_loss, self).init()
+        
+    def forward(self, pred, target):
+        # skip the batch and class axis for calculating Dice score (bxcx......)
+        axes = tuple(range(2, len(pred.shape))) 
+        #we can approximate |A∩B| as the element-wise multiplication between the prediction and target, and then sum the resulting matrix.
+        #common activations between our prediction and target
+        numerator = 2 * torch.sum(pred * target,axes) 
+        #quantity of activations in pred & target separately
+        denominator = torch.sum((pred*pred) + (target*target),axes)
+        #formulate a loss function which can be minimized, we'll simply use 1−Dice, same effect as normalizing loss
+        return 1 - torch.mean((numerator + 1e-6) / (denominator + 1e-6)) 
+    
 # def iou(pred,target):
 #     pred = pred.cpu().numpy()
 #     target = target.cpu().numpy()
