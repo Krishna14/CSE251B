@@ -6,7 +6,7 @@ import torch
 import pandas as pd
 from collections import namedtuple
 
-n_class    = 27
+n_class = 27
 
 # a label and all meta information
 Label = namedtuple( 'Label' , [
@@ -48,32 +48,38 @@ labels = [
 
 class IddDataset(Dataset):
 
-    def __init__(self, csv_file, n_class=n_class, transforms_=None):
+    def __init__(self, csv_file, n_class=n_class, transforms_=None,resize=True):
         self.data      = pd.read_csv(csv_file)
         self.n_class   = n_class
         self.mode = csv_file
+        self.resize = resize
         
         # Add any transformations here
+        self.resize_transform = transforms.Resize((256,256))
         
         # The following transformation normalizes each channel using the mean and std provided
         self.transforms = transforms.Compose([transforms.ToTensor(),
-                                              transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),])
+                                              transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
 
     def __len__(self):
         return len(self.data)
-
+    
     def __getitem__(self, idx):
-        
         img_name = self.data.iloc[idx, 0]
         img = Image.open(img_name).convert('RGB')
         label_name = self.data.iloc[idx, 1]
         label = Image.open(label_name)
+        #print("Img type is {}".format(type(img)))
+        if self.resize:
+            img = self.resize_transform(img)
+            label = self.resize_transform(label)
         
         img = np.asarray(img) / 255. # scaling [0-255] values to [0-1]
         label = np.asarray(label)
-        
-        img = self.transforms(img).float() # Normalization
-        label = torch.from_numpy(label.copy()).long() # convert to tensor
+        # Normalization
+        img = self.transforms(img).float()
+        # Convert to tensor
+        label = torch.from_numpy(label.copy()).long()
 
         # create one-hot encoding
         h, w = label.shape
