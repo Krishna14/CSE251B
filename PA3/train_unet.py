@@ -76,12 +76,18 @@ def train():
             best_val_loss = val_loss
             print("best val loss achieved, saving model")
             torch.save(unet_model, 'unet')
-        if epoch >= 5:
+#             stop = 0
+#         else:
+#             stop += 1
+#             if stop == 10:
+#                 print ("EarlyStop after %d epochs." % (epoch))
+#                 return train_losses, val_losses
+        if epoch >= 4:
             stop = 0
-            for i in range(0,5):
+            for i in range(0,4):
                 if val_losses[epoch-i] > val_losses[epoch-i-1]:
                     stop = stop + 1
-            if stop == 5 :
+            if stop == 4:
                 print ("EarlyStop after %d epochs." % (epoch))
                 return train_losses, val_losses
         unet_model.train()
@@ -140,53 +146,53 @@ def test():
             # create one-hot encoding
             predictions = torch.argmax(predictions,dim=1)
             iou_row,avg_iou = iou(predictions,test_labels)
-            if iou_row is not None:
-                val_ious_cls.append(iou_row)
+            val_ious_cls.append(iou_row)
             val_iou.append(avg_iou)
             val_acc.append(pixel_acc(predictions,test_labels))
         avg_iou = np.mean(np.asarray(val_iou))
         avg_acc = np.mean(np.asarray(val_acc))
-        if iou_row is not None:
-            avg_ious_cls = np.nanmean(np.asarray(val_ious_cls),axis=0) #iou for the class when it's union=0 will be nan
+        avg_ious_cls = np.nanmean(np.asarray(val_ious_cls),axis=0) #iou for the class when it's union=0 will be nan
         print("Final test from best model : avg_iou = {}, avg_acc = {}".format(avg_iou,avg_acc))
         print(" Class wise ious getting saved in unet_IOU_Classwise.csv file")
         
-        if iou_row is not None:
-            d = []
-            labels_len = len(labels)
-            for idx in range(0,labels_len-1):
-                 d.append((labels[idx].name, avg_ious_cls[labels[idx].level3Id]))
-            df = pd.DataFrame(d, columns=('Label name', 'IoU'))
-            df.to_csv('unet_IOU_Classwise.csv', sep='\t')
 
-            test_loader = DataLoader(dataset=test_dataset, batch_size= 1, num_workers=4, shuffle=False)
-            for itera, (X, tar, Y) in enumerate(test_loader):
-                if use_gpu:
-                    inputs = X.cuda()# Move your inputs onto the gpu
-                    test_labels = Y.cuda()# Move your labels onto the gpu
-                else:
-                    inputs, test_labels = X, Y#.long() # Unpack variables into inputs and labels
-                outputs = unet_model(inputs)
-                predictions = torch.nn.functional.softmax(outputs,1)
-                predictions = torch.argmax(predictions,dim=1)
-                break
-            predictions = predictions.cpu().numpy()
-            inputImage = inputs[0].permute(1, 2, 0).cpu().numpy()
-            plt.imshow(inputImage, cmap='gray')
-            plt.show()
-            rows, cols = predictions.shape[1], predictions.shape[2]
-            #print(labels)
-            new_predictions = np.zeros((predictions.shape[1], predictions.shape[2], 3))
-            for row in range(rows):
-                for col in range(cols):
-                    idx = int(predictions[0][row][col])
-                    new_predictions[row][col][:] = np.asarray(labels[idx].color)       
+        d = []
+        labels_len = len(labels)
+        for idx in range(0,labels_len-1):
+             d.append((labels[idx].name, avg_ious_cls[labels[idx].level3Id]))
+        df = pd.DataFrame(d, columns=('Label name', 'IoU'))
+        df.to_csv('unet_IOU_Classwise.csv', sep='\t')
 
-            plt.imshow(inputImage, cmap='gray')
-            plt.imshow(new_predictions, cmap='jet', alpha=0.5)
-            fig_name = "Overlayed_unet.jpg"  
-            plt.savefig(fig_name, dpi=300)
-            plt.show()
+        test_loader = DataLoader(dataset=test_dataset, batch_size= 1, num_workers=8, shuffle=False)
+        for itera, (X, tar, Y) in enumerate(test_loader):
+            if use_gpu:
+                inputs = X.cuda()# Move your inputs onto the gpu
+                test_labels = Y.cuda()# Move your labels onto the gpu
+            else:
+                inputs, test_labels = X, Y#.long() # Unpack variables into inputs and labels
+            outputs = unet_model(inputs)
+            predictions = torch.nn.functional.softmax(outputs,1)
+            predictions = torch.argmax(predictions,dim=1)
+            break
+        predictions = predictions.cpu().numpy()
+        inputImage = inputs[0].permute(1, 2, 0).cpu().numpy()
+        plt.imshow(inputImage, cmap='gray')
+        plt.show()
+        rows, cols = predictions.shape[1], predictions.shape[2]
+        #print(labels)
+        new_predictions = np.zeros((predictions.shape[1], predictions.shape[2], 3))
+        for row in range(rows):
+            for col in range(cols):
+                idx = int(predictions[0][row][col])
+                new_predictions[row][col][:] = np.asarray(labels[idx].color)/255       
+
+        plt.imshow(inputImage)
+        plt.imshow(new_predictions, alpha=0.5)
+        plt.axis('off')
+        fig_name = "Overlayed_unet.jpg"  
+        plt.savefig(fig_name, dpi=300)
+        plt.show()
+            
 
 if __name__ == "__main__":
     val(0)  # show the accuracy before training
