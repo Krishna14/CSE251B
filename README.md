@@ -22,4 +22,17 @@ This repository contains the details of the implementation of different programm
 3. Part (f) has three subparts to it. The first one could be run by 3(f).ipynb and the other could be run using Q3(f).ipynb
 
 # PA 3 - Collaborators - Sreekrishna, Gautham, Akshaya, Justin and Tri Truong
-1. Currently, this assignment is under construction.
+
+1. Each of the collaborator has their own branch -
+
+2. Sreekrishna - main branch, Akshaya - Akshaya_Train, Justin - jh, Tri Truong - tt
+
+3. In this work, the following are the contributions made by each one -
+
+   3.1 Sreekrishna - Development of the baseline model, implementation of FCN, early stopping and hyper-parameter tuning
+   
+   3.2 Akshaya & Gautham - Involved in the design of the baseline model, implementation of IoU/pixel accuracy, generation of results, early stopping and hyper-parameter tuning.
+   
+   3.3 Justin - Implementation of UNet model
+   
+   3.4 Tri - Design and implementation of the Transfer Learning Model.
