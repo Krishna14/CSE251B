@@ -24,4 +24,8 @@ This repository contains the details of the implementation of different programm
 # PA 3 - Collaborators - Sreekrishna, Gautham, Akshaya, Justin and Tri Truong
 1. Each of the collaborator has their own branch -
 2. Sreekrishna - main branch, Akshaya - Akshaya_Train, Justin - jh, Tri Truong - tt
-3. In this 
+3. In this work, the following are the contributions made by each one -
+   Sreekrishna - Development of the baseline model, implementation of FCN, early stopping and hyper-parameter tuning
+   Akshaya & Gautham - Involved in the design of the baseline model, implementation of IoU/pixel accuracy, generation of results, early stopping and hyper-parameter tuning.
+   Justin - Implementation of UNet model
+   Tri - Design and implementation of the Transfer Learning Model.
