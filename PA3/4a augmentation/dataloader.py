@@ -93,17 +93,19 @@ class IddDataset(Dataset):
 
             elif transform_type==1:
                 #rotating the image 
-                rotate_transform = transforms.RandomRotation(30) 
-                img = rotate_transform(img)
-                label = rotate_transform(label)
+                #rotate_transform = transforms.RandomRotation(30) 
+                angle = np.random.randint(-30,30)
+                #rotate_transform = transforms.functional.rotate()
+                img = transforms.functional.rotate(img,angle)
+                label = transforms.functional.rotate(label,angle)
 
             else:
                 #different crops 
-                #self.resize_transform = transforms.RandomResizedCrop(((256,256))) 
-                crop_transform = transforms.RandomCrop(((256,512))) 
+                crop_transform = transforms.CenterCrop((256,512)) 
                 img = crop_transform(img)
                 label = crop_transform(label)
                 
+            
         if self.resize:
         #resize your input images such that its dimensions are a power of 2
             img = self.resize_transform(img)
