@@ -22,4 +22,6 @@ This repository contains the details of the implementation of different programm
 3. Part (f) has three subparts to it. The first one could be run by 3(f).ipynb and the other could be run using Q3(f).ipynb
 
 # PA 3 - Collaborators - Sreekrishna, Gautham, Akshaya, Justin and Tri Truong
-1. Currently, this assignment is under construction.
+1. Each of the collaborator has their own branch -
+2. Sreekrishna - main branch, Akshaya - Akshaya_Train, Justin - jh, Tri Truong - tt
+3. In this 
