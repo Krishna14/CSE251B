@@ -76,12 +76,6 @@ def train():
             best_val_loss = val_loss
             print("best val loss achieved, saving model")
             torch.save(unet_model, 'unet')
-#             stop = 0
-#         else:
-#             stop += 1
-#             if stop == 10:
-#                 print ("EarlyStop after %d epochs." % (epoch))
-#                 return train_losses, val_losses
         if epoch >= 3:
             stop = 0
             for i in range(0,3):
@@ -127,7 +121,7 @@ def val(epoch):
         return avg_loss, avg_iou
     
 def test():
-    unet_model = torch.load('unet')
+    unet_model = torch.load('unet-Copy1')
     unet_model.eval()
     #Complete this function - Calculate accuracy and IoU 
     # Make sure to include a softmax after the output from your model

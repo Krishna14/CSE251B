@@ -50,7 +50,7 @@ labels = [
 class IddDataset(Dataset):
 
     def __init__(self, csv_file, n_class=n_class, transforms_=None):
-        self.data      = pd.read_csv(csv_file)
+        self.data      = pd.read_csv(csv_file, header=None)
         self.n_class   = n_class
         self.mode = csv_file
         self.do_transform = False
