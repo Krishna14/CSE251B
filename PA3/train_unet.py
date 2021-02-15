@@ -33,7 +33,7 @@ criterion = dice_coefficient_loss() # Choose an appropriate loss function from h
 unet_model = unet(n_class=n_class)
 unet_model.apply(init_weights)
 
-optimizer = optim.Adam(unet_model.parameters(), lr=5e-3)
+optimizer = optim.Adam(unet_model.parameters(), lr=3e-3)
 
 use_gpu = torch.cuda.is_available()
 if use_gpu:
@@ -82,12 +82,12 @@ def train():
 #             if stop == 10:
 #                 print ("EarlyStop after %d epochs." % (epoch))
 #                 return train_losses, val_losses
-        if epoch >= 4:
+        if epoch >= 3:
             stop = 0
-            for i in range(0,4):
+            for i in range(0,3):
                 if val_losses[epoch-i] > val_losses[epoch-i-1]:
                     stop = stop + 1
-            if stop == 4:
+            if stop == 3:
                 print ("EarlyStop after %d epochs." % (epoch))
                 return train_losses, val_losses
         unet_model.train()
