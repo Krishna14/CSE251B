@@ -83,12 +83,12 @@ def train():
             print ("Saving best model after %d epochs." % (epoch))
             best_loss = curr_val_loss
             torch.save(fcn_model, MODEL_NAME)
-        if epoch>=5:
+        if epoch>=3:
             stop = 0
-            for i in range(0,5):
+            for i in range(0,3):
                 if val_loss[epoch-i] > val_loss[epoch-i-1]:
                     stop = stop + 1
-            if stop == 5 :
+            if stop == 3 :
                 print ("EarlyStop after %d epochs." % (epoch))
                 return train_loss, val_loss, val_inputs
         torch.save(fcn_model, 'last_saved_model')
