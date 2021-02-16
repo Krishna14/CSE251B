@@ -153,7 +153,7 @@ def val(epoch):
         return avg_loss, inputs    
     
 def test():
-	fcn_model = torch.load(MODEL_NAME)
+    fcn_model = torch.load(MODEL_NAME)
     fcn_model.eval()
     val_iou = []
     val_acc = []

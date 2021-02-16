@@ -133,7 +133,7 @@ def val(epoch):
         return avg_loss, inputs    
     
 def test():
-	fcn_model = torch.load(MODEL_NAME)
+    fcn_model = torch.load(MODEL_NAME)
     fcn_model.eval()
     val_iou = []
     val_acc = []
@@ -162,8 +162,8 @@ def test():
         avg_acc = np.mean(np.asarray(val_acc))
         avg_ious_cls = np.nanmean(np.asarray(val_ious_cls),axis=0) #iou for the class when it's union=0 will be nan
         print("Final test from best model : avg_iou = {}, avg_acc = {}".format(avg_iou,avg_acc))
-        
-        
+
+
         d = []
         labels_len = len(labels)
         for idx in range(0,labels_len-1):
