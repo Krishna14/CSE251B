@@ -28,7 +28,7 @@ def init_weights(m):
         torch.nn.init.xavier_uniform_(m.weight.data)
         torch.nn.init.zeros_(m.bias.data)        
 
-epochs = 100        
+epochs = 10        
 criterion = dice_coefficient_loss() # Choose an appropriate loss function from https://pytorch.org/docs/stable/_modules/torch/nn/modules/loss.html
 unet_model = unet(n_class=n_class)
 unet_model.apply(init_weights)
@@ -85,6 +85,7 @@ def train():
                 print ("EarlyStop after %d epochs." % (epoch))
                 return train_losses, val_losses
         unet_model.train()
+        test()
         print("-" * 20)
     return train_losses, val_losses
 
@@ -121,7 +122,7 @@ def val(epoch):
         return avg_loss, avg_iou
     
 def test():
-    unet_model = torch.load('unet-Copy1')
+    unet_model = torch.load('unet')
     unet_model.eval()
     #Complete this function - Calculate accuracy and IoU 
     # Make sure to include a softmax after the output from your model
@@ -149,43 +150,44 @@ def test():
         print("Final test from best model : avg_iou = {}, avg_acc = {}".format(avg_iou,avg_acc))
         print(" Class wise ious getting saved in unet_IOU_Classwise.csv file")
         
+        if np.all(avg_ious_cls):
+            print("found all nonzero")
+            d = []
+            labels_len = len(labels)
+            for idx in range(0,labels_len-1):
+                 d.append((labels[idx].name, avg_ious_cls[labels[idx].level3Id]))
+            df = pd.DataFrame(d, columns=('Label name', 'IoU'))
+            df.to_csv('unet_IOU_Classwise.csv', sep='\t')
 
-        d = []
-        labels_len = len(labels)
-        for idx in range(0,labels_len-1):
-             d.append((labels[idx].name, avg_ious_cls[labels[idx].level3Id]))
-        df = pd.DataFrame(d, columns=('Label name', 'IoU'))
-        df.to_csv('unet_IOU_Classwise.csv', sep='\t')
+#         test_loader = DataLoader(dataset=test_dataset, batch_size= 1, num_workers=8, shuffle=False)
+#         for itera, (X, tar, Y) in enumerate(test_loader):
+#             if use_gpu:
+#                 inputs = X.cuda()# Move your inputs onto the gpu
+#                 test_labels = Y.cuda()# Move your labels onto the gpu
+#             else:
+#                 inputs, test_labels = X, Y#.long() # Unpack variables into inputs and labels
+#             outputs = unet_model(inputs)
+#             predictions = torch.nn.functional.softmax(outputs,1)
+#             predictions = torch.argmax(predictions,dim=1)
+#             break
+#         predictions = predictions.cpu().numpy()
+#         inputImage = inputs[0].permute(1, 2, 0).cpu().numpy()
+#         plt.imshow(inputImage, cmap='gray')
+#         plt.show()
+#         rows, cols = predictions.shape[1], predictions.shape[2]
+#         #print(labels)
+#         new_predictions = np.zeros((predictions.shape[1], predictions.shape[2], 3))
+#         for row in range(rows):
+#             for col in range(cols):
+#                 idx = int(predictions[0][row][col])
+#                 new_predictions[row][col][:] = np.asarray(labels[idx].color)/255       
 
-        test_loader = DataLoader(dataset=test_dataset, batch_size= 1, num_workers=8, shuffle=False)
-        for itera, (X, tar, Y) in enumerate(test_loader):
-            if use_gpu:
-                inputs = X.cuda()# Move your inputs onto the gpu
-                test_labels = Y.cuda()# Move your labels onto the gpu
-            else:
-                inputs, test_labels = X, Y#.long() # Unpack variables into inputs and labels
-            outputs = unet_model(inputs)
-            predictions = torch.nn.functional.softmax(outputs,1)
-            predictions = torch.argmax(predictions,dim=1)
-            break
-        predictions = predictions.cpu().numpy()
-        inputImage = inputs[0].permute(1, 2, 0).cpu().numpy()
-        plt.imshow(inputImage, cmap='gray')
-        plt.show()
-        rows, cols = predictions.shape[1], predictions.shape[2]
-        #print(labels)
-        new_predictions = np.zeros((predictions.shape[1], predictions.shape[2], 3))
-        for row in range(rows):
-            for col in range(cols):
-                idx = int(predictions[0][row][col])
-                new_predictions[row][col][:] = np.asarray(labels[idx].color)/255       
-
-        plt.imshow(inputImage)
-        plt.imshow(new_predictions, alpha=0.5)
-        plt.axis('off')
-        fig_name = "Overlayed_unet.jpg"  
-        plt.savefig(fig_name, dpi=300)
-        plt.show()
+#         plt.imshow(inputImage)
+#         plt.imshow(new_predictions, alpha=0.5)
+#         plt.axis('off')
+#         fig_name = "Overlayed_unet.jpg"  
+#         plt.savefig(fig_name, dpi=300)
+#         plt.show()
             
 
 if __name__ == "__main__":
