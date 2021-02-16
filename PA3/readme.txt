@@ -23,6 +23,9 @@ To run this experiment, go insde the 5b directory and execute transfer_learning(
 
 cd 5b
 python transfer_learning(1).py
+
+Hyperparameters such as learning rate, batch size, etc. can be tuned if needed in starter.py 
+The resulting loss plot, segmentation overlayed on first test image and the classwise iou of validation set (in csv format) will get generated and saved in the same directory. 
  
 6. U-net
 To run this experiment, go inside the 5c directory and execute train_unet.py
