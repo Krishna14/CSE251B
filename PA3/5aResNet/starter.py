@@ -237,8 +237,8 @@ def plot_loss_curves(train_loss,val_loss, learning_rate=10**-3):
     plt.show()
 
 # main() is the function that's called here
-#def main():
-if __name__ == '__main__':
+def main():
+#if __name__ == '__main__':
     # Here, we have the main function calling all the other functions
     train_loss, val_loss = train(0.005)
     best_val_loss = float('inf')

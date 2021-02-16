@@ -1,5 +1,5 @@
 from torchvision import utils
-from resUNet import *
+from residual_UNet import *
 from utils import *
 from dataloader import *
 import torchvision
@@ -11,14 +11,6 @@ import torch.nn as nn
 import pandas as pd 
 from collections import defaultdict
 
-# First read the dataset
-train_dataset = IddDataset(csv_file='../train.csv')
-val_dataset = IddDataset(csv_file='../val.csv')
-test_dataset = IddDataset(csv_file='../test.csv')
-
-train_loader = DataLoader(dataset=train_dataset, batch_size= 32, num_workers=4, shuffle=True)
-val_loader = DataLoader(dataset=val_dataset, batch_size= 32, num_workers=4, shuffle=True)
-test_loader = DataLoader(dataset=test_dataset, batch_size= 32, num_workers=4, shuffle=False)
 
 def init_weights(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -40,11 +32,10 @@ class dice_coefficient_loss(nn.Module):
         return 1 - torch.mean((numerator + 1e-6) / (denominator + 1e-6))
     
 # First read the dataset
-train_dataset = IddDataset(csv_file='train.csv')
-val_dataset = IddDataset(csv_file='val.csv')
-test_dataset = IddDataset(csv_file='test.csv')
+train_dataset = IddDataset(csv_file='../train.csv')
+val_dataset = IddDataset(csv_file='../val.csv')
+test_dataset = IddDataset(csv_file='../test.csv')
 
-# train_loader, val_loader and test_loader are three different sets of data
 train_loader = DataLoader(dataset=train_dataset, batch_size= 32, num_workers=4, shuffle=True)
 val_loader = DataLoader(dataset=val_dataset, batch_size= 32, num_workers=4, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size= 32, num_workers=4, shuffle=False)
@@ -252,7 +243,7 @@ def plot_loss_curves(train_loss,val_loss, learning_rate=10**-3):
 def main():
 #if __name__ == '__main__':
     # Here, we have the main function calling all the other functions
-    train_loss, val_loss = train(0.005)
+    train_loss, val_loss = train(0.001)
     best_val_loss = float('inf')
     curr_val_loss = np.min(np.asarray(val_loss))
     if(curr_val_loss < best_val_loss):
@@ -260,4 +251,4 @@ def main():
         best_learning_rate = lr
     print("Best validation loss = {}".format(best_val_loss))
     plot_loss_curves(train_loss,val_loss, lr)
-    test(0.005, 100)
+    test(0.001, 100)
