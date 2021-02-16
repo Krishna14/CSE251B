@@ -17,3 +17,12 @@ python starter.py
 
 Hyperparameters such as learning rate, batch size, etc. can be tuned if needed in starter.py 
 The resulting loss plot, segmentation overlayed on first test image and the classwise iou of validation set (in csv format) will get generated and saved in the same directory. 
+
+6. U-net
+To run this experiment, go inside the 5c directory and execute train_unet.py
+
+cd 5c\ unet
+python train_unet.py
+
+Hyperparameters such as learning rate, batch size, etc. can be tuned if needed in starter.py 
+The resulting loss plot, segmentation overlayed on first test image and the classwise iou of validation set (in csv format) will get generated and saved in the same directory. 
