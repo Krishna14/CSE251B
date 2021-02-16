@@ -1,4 +1,5 @@
 # README
+NOTE: All the scripts should be run inside a GPU-supported environment with Pytorch. 
 
 1. Baseline
 In order to run the baseline, just execute starter.py after entering into the baseline directory:
