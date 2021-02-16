@@ -18,6 +18,15 @@ python starter.py
 Hyperparameters such as learning rate, batch size, etc. can be tuned if needed in starter.py 
 The resulting loss plot, segmentation overlayed on first test image and the classwise iou of validation set (in csv format) will get generated and saved in the same directory. 
 
+3. Class Imbalance
+To run this experiment, go inside the 4b class imbalance directory and execute starter.py
+
+cd 4b class imbalance 
+python starter.py
+
+Hyperparameters such as learning rate, batch size, etc. can be tuned if needed in starter.py 
+The resulting loss plot, segmentation overlayed on first test image and the classwise iou of validation set (in csv format) will get generated and saved in the same directory. 
+
 5. Transfer Learning
 To run this experiment, go insde the 5b directory and execute transfer_learning(1).py
 
