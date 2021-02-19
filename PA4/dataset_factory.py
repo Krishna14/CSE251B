@@ -33,7 +33,7 @@ def get_datasets(config_data):
     vocabulary = load_vocab(train_annotation_file, vocab_threshold)
 
     train_data_loader = get_coco_dataloader(train_ids_file_path, root_train, train_annotation_file, coco, vocabulary,
-                                            config_data)
+                                            config_data,transform=True)
     val_data_loader = get_coco_dataloader(val_ids_file_path, root_val, train_annotation_file, coco, vocabulary,
                                           config_data)
     test_data_loader = get_coco_dataloader(test_ids_file_path, root_test, test_annotation_file, coco_test, vocabulary,
@@ -42,7 +42,7 @@ def get_datasets(config_data):
     return coco_test, vocabulary, train_data_loader, val_data_loader, test_data_loader
 
 
-def get_coco_dataloader(img_ids_file_path, imgs_root_dir, annotation_file_path, coco_obj, vocabulary, config_data):
+def get_coco_dataloader(img_ids_file_path, imgs_root_dir, annotation_file_path, coco_obj, vocabulary, config_data,transform=False):
     with open(img_ids_file_path, 'r') as f:
         reader = csv.reader(f)
         img_ids = list(reader)
@@ -56,7 +56,7 @@ def get_coco_dataloader(img_ids_file_path, imgs_root_dir, annotation_file_path, 
                           json=annotation_file_path,
                           ids=ann_ids,
                           vocab=vocabulary,
-                          img_size=config_data['dataset']['img_size'])
+                          img_size=config_data['dataset']['img_size'],transform=transform) #for train
     return DataLoader(dataset=dataset,
                       batch_size=config_data['dataset']['batch_size'],
                       shuffle=True,

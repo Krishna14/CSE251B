@@ -12,6 +12,7 @@ import numpy as np
 import nltk
 from PIL import Image
 from pycocotools.coco import COCO
+import random
 
 
 class CocoDataset(data.Dataset):
@@ -30,13 +31,22 @@ class CocoDataset(data.Dataset):
         self.coco = COCO(json)
         self.ids = ids
         self.vocab = vocab
+        self.do_transform = False
+        self.img_size = img_size
+        
+        #Should be "True" only when we call train_dataloader.
+        if transform==True: 
+            self.do_transform = True 
+   
         self.normalize = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         
         self.resize = transforms.Compose(
-            [transforms.Resize(img_size, interpolation=2), transforms.CenterCrop(img_size)])
+            [transforms.Resize(img_size, interpolation=2), transforms.CenterCrop(224)]) 
+                    #256-Test Performance: Loss: 3.8500789358260783 after 2 epochs best model
+                    #224-Test Performance: Loss: 3.8326662144762405 after 2 epochs best model
 
     def __getitem__(self, index):
         """Returns one data pair (image and caption)."""
@@ -47,9 +57,19 @@ class CocoDataset(data.Dataset):
         img_id = coco.anns[ann_id]['image_id']
         path = coco.loadImgs(img_id)[0]['file_name'];
         image = Image.open(os.path.join(self.root, path)).convert('RGB')
-        image = self.resize(image)
-        image = self.normalize(np.asarray(image))
-
+       
+        #do transformations for train data
+        if self.do_transform:
+            augment = transforms.Compose([
+                transforms.Resize(self.img_size, interpolation=2), transforms.RandomCrop(224),
+                transforms.RandomHorizontalFlip(), 
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+            image = augment(image)
+        else:
+            image = self.resize(image)
+            image = self.normalize(np.asarray(image))
         # Convert caption (string) to word ids.
         tokens = nltk.tokenize.word_tokenize(str(caption).lower())
         caption = [vocab('<start>')]

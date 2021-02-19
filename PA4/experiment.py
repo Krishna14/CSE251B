@@ -44,6 +44,7 @@ class Experiment(object):
         # Setup Experiment
         self.__generation_config = config_data['generation']
         self.__epochs = config_data['experiment']['num_epochs']
+        self.__early_stop_threshold = config_data['experiment']['early_stop_threshold']
         self.__learning_rate = config_data['experiment']['learning_rate']
         self.__current_epoch = 0
         self.__training_losses = []
@@ -60,6 +61,7 @@ class Experiment(object):
         parameters = list(self.__decoder_model.parameters()) + list(self.__encoder_model.parameters()) + list(self.__encoder_model.batchNorm.parameters())
         self.__optimizer = optim.Adam(parameters, lr=self.__learning_rate)
    
+        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
         self.__use_gpu = False
         self.__init_model()
 
@@ -102,15 +104,26 @@ class Experiment(object):
             val_loss = self.__val()
             # Saving the best model here
             if(val_loss < min_val_loss):
+                print ("Saving best model after %d epochs." % (epoch))
                 min_val_loss = val_loss
                 self.__best_encoder_model = self.__encoder_model
                 self.__best_decoder_model = self.__decoder_model
-                MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
-                torch.save(self.__best_encoder_model, MODEL_NAME+"encoder")
-                torch.save(self.__best_decoder_model, MODEL_NAME+"decoder")
+                #MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
+                torch.save(self.__best_encoder_model, self.__MODEL_NAME+"_encoder")
+                torch.save(self.__best_decoder_model, self.__MODEL_NAME+"_decoder")
             self.__record_stats(train_loss, val_loss)
             self.__log_epoch_stats(start_time)
             self.__save_model()
+            #Early stop to prevent model from overfitting
+            if epoch>=self.__early_stop_threshold:
+                stop = 0
+                for i in range(0,self.__early_stop_threshold):
+                    if self.__val_losses[epoch-i] > self.__val_losses[epoch-i-1]:
+                        stop = stop + 1
+                if stop == self.__early_stop_threshold :
+                    print ("EarlyStop after %d epochs." % (epoch))
+                    break
+        print("Experiment done!")
 
     # TODO: Perform one training iteration on the whole dataset and return loss value
     def __train(self):
@@ -165,17 +178,34 @@ class Experiment(object):
     #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
     #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
     def test(self):
+        self__encoder_model = torch.load(self.__MODEL_NAME+"_encoder")
+        self.__decoder_model = torch.load(self.__MODEL_NAME+"_decoder")
         self.__encoder_model.eval()
         self.__decoder_model.eval()
         test_loss = 0
         bleu1 = 0
         bleu4 = 0
-
+        test_loss_batch = []
         with torch.no_grad():
-            for iter, (images, captions, img_ids) in enumerate(self.__test_loader):
-                raise NotImplementedError()
+            for iter, (images, captions, lengths) in enumerate(self.__test_loader):
+                targets = pack_padded_sequence(captions, lengths, batch_first=True)
+                if self.__use_gpu:
+                    inputs = images.cuda()
+                    test_labels = captions.cuda()
+                    targets = targets[0].cuda()
+                else:
+                    inputs, test_labels, targets = images, captions, targets[0]
 
-        result_str = "Test Performance: Loss: {}, Perplexity: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
+                features = self.__encoder_model(inputs)
+                outputs = self.__decoder_model(features, test_labels, lengths)
+                loss = self.__criterion(outputs, targets)
+                loss = torch.unsqueeze(loss,0)
+                loss = loss.mean()
+                test_loss_batch.append(loss.item())
+            
+        test_loss = np.mean(np.array(test_loss_batch))
+
+        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
                                                                                                bleu1,
                                                                                                bleu4)
         self.__log(result_str)
