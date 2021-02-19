@@ -36,3 +36,8 @@ This repository contains the details of the implementation of different programm
    3.3 Justin - Implementation of UNet model
    
    3.4 Tri - Design and implementation of the Transfer Learning Model.
+
+
+# PA 4 - Collaborators - Sreekrishna, Akshaya, Gautham, Justin and Tri
+
+1. Same as PA 3
