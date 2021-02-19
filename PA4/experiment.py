@@ -156,7 +156,7 @@ class Experiment(object):
                 features = self.__encoder_model(inputs)
                 outputs = self.__decoder_model(features, val_labels, lengths)
                 loss = self.__criterion(outputs, targets)
-                loss = torch.unsqueeze(loss,targets)
+                loss = torch.unsqueeze(loss,0)
                 loss = loss.mean()
                 val_loss_batch.append(loss.item())
             return np.mean(np.array(val_loss_batch))
