@@ -19,6 +19,8 @@ from dataset_factory import get_datasets
 from file_utils import *
 from model_factory import get_model
 
+from vocab import *
+
 import nltk
 nltk.download('punkt')
 
@@ -114,6 +116,7 @@ class Experiment(object):
 
     # TODO: Perform one training iteration on the whole dataset and return loss value
     def __train(self):
+        #vocab = build_vocab("./data/annotations/captions_train2014.json", 2)
         self.__encoder_model.train()
         self.__decoder_model.train()
         train_loss_batch = []
@@ -128,6 +131,24 @@ class Experiment(object):
                 inputs, train_labels, targets = images, captions, targets[0]
 
             features = self.__encoder_model(inputs)
+            
+            #caption generation part
+            sentences = self.__decoder_model.generate_captions(features,self.__vocab) #for caption
+#             caption_ids = caption_ids[0].cpu().numpy()          # (1, max_seq_length) -> (max_seq_length)
+
+#             # Convert word_ids to words
+#             sampled_caption = []
+#             for word_id in caption_ids:
+#                 word = self.__vocab.idx2word[word_id]
+#                 sampled_caption.append(word)
+#                 if word == '<end>':
+#                     break
+            
+            for num in range(0,len(sentences)):
+                sentence = sentences[num]
+                print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
+            
+            #resume training with loss calculation
             outputs = self.__decoder_model(features, train_labels, lengths)
             loss = self.__criterion(outputs, targets)
             loss = torch.unsqueeze(loss,0)

@@ -68,11 +68,50 @@ class decoder(nn.Module):
         
         return outputs
     
-    def generate_captions(self, features, states=None):
-        """
-            Given image features
-        """
+    def generate_captions(self, features,vocab, states=None):
+        #def sample(self, inputs, states=None, max_len=20):
+        # takes the features from encoder and generates captions
+        caption = []
+        features = features.unsqueeze(1)
+        for i in range(20): # caption of maximum length 56 seen in training set
+            lstm_outputs, states = self.sequence_model(features,states)
+            lstm_outputs = lstm_outputs.squeeze(1)
+            out = self.linear(lstm_outputs)
+            #print('shape of linear output ',out.shape())
+            last_pick = out.max(1)[1]
+            caption.append(last_pick)
+            features = self.embedding_layer(last_pick).unsqueeze(1)
+        caption = torch.stack(caption, 1) 
+        caption = caption[0].cpu().numpy()
+        
 
+        batch_caption = []
+        words_sequence = []
+        for word_id in caption:
+            word = vocab.idx2word[word_id]
+            words_sequence.append(word)
+            if word == '<end>':
+                sentence = ' '.join(words_sequence)
+                batch_caption.append(sentence)
+                words_sequence = []    
+        return batch_caption
+
+        #sampled_ids = []
+        #inputs = features.unsqueeze(1)
+        #for i in range(self.max_seg_length):
+        #    hiddens, states = self.lstm(inputs, states)          # hiddens: (batch_size, 1, hidden_size)
+        #    outputs = self.linear(hiddens.squeeze(1))            # outputs:  (batch_size, vocab_size)
+        #    _, predicted = outputs.max(1)                        # predicted: (batch_size)
+        #    sampled_ids.append(predicted)
+        #    if pretrained:
+        #        inputs = self.prembed(predicted).float()
+        #    else:
+        #        inputs = self.embed(predicted)                       # inputs: (batch_size, embed_size)
+        #    inputs = inputs.unsqueeze(1)                         # inputs: (batch_size, 1, embed_size)
+        #sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
+        #return sampled_ids
+    
+    
 def get_model(config_data, vocab):
     hidden_size = config_data['model']['hidden_size']
     embedding_size = config_data['model']['embedding_size']
