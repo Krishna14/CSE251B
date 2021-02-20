@@ -134,17 +134,11 @@ class Experiment(object):
             
             #caption generation part
             sentences = self.__decoder_model.generate_captions(features,self.__vocab) #for caption
-#             caption_ids = caption_ids[0].cpu().numpy()          # (1, max_seq_length) -> (max_seq_length)
-
-#             # Convert word_ids to words
-#             sampled_caption = []
-#             for word_id in caption_ids:
-#                 word = self.__vocab.idx2word[word_id]
-#                 sampled_caption.append(word)
-#                 if word == '<end>':
-#                     break
             
-            for num in range(0,len(sentences)):
+            #visualize image and captions
+            plt.imshow(images[0].permute(1,2,0))    
+            plt.show()
+            for num in range(0,3):
                 sentence = sentences[num]
                 print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
             

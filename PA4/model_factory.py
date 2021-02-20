@@ -23,9 +23,14 @@ class encoder(nn.Module):
         """
         super(encoder, self).__init__()
         self.experiment_name = experiment_name
-        self.res50_model = models.resnet50(pretrained=True)
-        # Replacing the last layer with the linear layer
-        self.res50_model.fc = nn.Linear(self.res50_model.fc.in_features, embedding_size)
+        res50_model = models.resnet50(pretrained=True)
+        #get all the layers of resnet50
+        layers = list(res50_model.children())
+        # Removing the last layer 
+        layers = layers[:-1]
+        self.resnet50_model = nn.Sequential(*layers)
+        #replacing the last layer with linear layer
+        self.linear = nn.Linear(res50_model.fc.in_features, embedding_size)
         # Decide on the feature sizes
         self.batchNorm = nn.BatchNorm1d(embedding_size, momentum=0.01)
     
@@ -33,9 +38,14 @@ class encoder(nn.Module):
         """
            forward pass computation
         """
+        print('shape of input to forward',x.size())
         with torch.no_grad():
-            x1 = self.res50_model(x)
-            return x1
+            x1 = self.resnet50_model(x)
+        print('shape of output from resnet',x1.size())
+        x1 = x1.reshape(x1.size(0), -1)
+        x1 = self.linear(x1)
+        x1 = self.batchNorm(x1)
+        return x1
 
 class decoder(nn.Module):
     """
@@ -73,7 +83,8 @@ class decoder(nn.Module):
         # takes the features from encoder and generates captions
         caption = []
         features = features.unsqueeze(1)
-        for i in range(20): # caption of maximum length 56 seen in training set
+        max_count = 20
+        for i in range(max_count): # caption of maximum length 56 seen in training set
             lstm_outputs, states = self.sequence_model(features,states)
             lstm_outputs = lstm_outputs.squeeze(1)
             out = self.linear(lstm_outputs)
@@ -82,18 +93,25 @@ class decoder(nn.Module):
             caption.append(last_pick)
             features = self.embedding_layer(last_pick).unsqueeze(1)
         caption = torch.stack(caption, 1) 
-        caption = caption[0].cpu().numpy()
-        
+        #print('Caption of one batch shape is', caption.size())
+        caption = caption.cpu().numpy()
 
         batch_caption = []
         words_sequence = []
-        for word_id in caption:
-            word = vocab.idx2word[word_id]
-            words_sequence.append(word)
-            if word == '<end>':
-                sentence = ' '.join(words_sequence)
-                batch_caption.append(sentence)
-                words_sequence = []    
+        #print('length of caption is {} and type is {}'.format(len(caption),type(caption)))
+        for idx in range(0,len(caption)):
+            img_caption = caption[idx]
+            #print('length of image caption is', len(img_caption))
+            #print('image caption is',img_caption)
+            for word_id in img_caption:
+                word = vocab.idx2word[word_id]
+                #print('The index is {} and the word is {} '.format(word_id,word))
+                words_sequence.append(word)
+                if (len(words_sequence)==max_count):
+                    sentence = ' '.join(words_sequence)
+                    batch_caption.append(sentence)
+                    words_sequence = [] 
+        #print('length of batch caption is', len(batch_caption))
         return batch_caption
 
         #sampled_ids = []
