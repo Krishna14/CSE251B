@@ -196,7 +196,7 @@ class Experiment(object):
     #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
     #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
     def test(self):
-        state_dict = torch.load(os.path.join(self.__experiment_dir, 'latest_model.pt'))#'best_model'+self.__MODEL_NAME+'.pt'))
+        state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model'+self.__MODEL_NAME+'.pt'))
         self.__encoder_model.load_state_dict(state_dict['encoder_model'])
         self.__decoder_model.load_state_dict(state_dict['decoder_model'])
         self.__optimizer.load_state_dict(state_dict['optimizer'])
@@ -213,6 +213,7 @@ class Experiment(object):
         true_sentences = []
         with torch.no_grad():
             for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
+                #print("Inside iter = ",iter)
                 targets = pack_padded_sequence(captions, lengths, batch_first=True)
                 if self.__use_gpu:
                     inputs = images.cuda()
@@ -225,11 +226,21 @@ class Experiment(object):
                 
                 #caption generation part
                 pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+                          
                 predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
                 
                 
                 #print("Captions length at iter {} = {}".format(iter,len(captions)))
                 true_sentences.extend(get_true_captions(img_ids,coco))
+                
+                #visualize image and captions for the first test image (for our own sake)
+                if iter==0:
+                    for num in range(0,1):
+                        plt.imshow(images[num].permute(1,2,0))    
+                        plt.show() 
+                        sentence = predicted_sentences[num]
+                        truth = true_sentences[num][0]
+                    print('sentence for image # {} in iteration # {} is: {}, actual: {}'.format(num,iter,sentence,truth))
                 
                 outputs = self.__decoder_model(features, test_labels, lengths)
                 loss = self.__criterion(outputs, targets)
@@ -237,13 +248,7 @@ class Experiment(object):
                 loss = loss.mean()
                 test_loss_batch.append(loss.item())
                 
-                 #visualize image and captions for the first test image (for our own sake)
-                if iter==1:
-                    for num in range(0,1):
-                        plt.imshow(images[num].permute(1,2,0))    
-                        plt.show()
-                        sentence = predicted_sentences[num]
-                    print('sentence for image # {} in iteration # {} is {}'.format(num,iter,sentence))
+               
             
         test_loss = np.mean(np.array(test_loss_batch))
         print("Length of true sentences = {}, length of predicted sentences = {}".format(len(true_sentences),len(predicted_sentences)))

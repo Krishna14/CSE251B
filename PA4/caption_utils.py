@@ -15,16 +15,26 @@ from pycocotools.coco import COCO
 # Make sure to process your captions before evaluating bleu scores -
 # Converting to lower case, Removing tokens like <start>, <end>, padding etc.
 
-def bleu1(reference_captions, predicted_caption):
-    return 100 * sentence_bleu(reference_captions, predicted_caption,
+def bleu1(all_reference_captions, all_predicted_captions):
+    bleu1_score = 0
+    total = len(all_reference_captions)
+    for idx in range(0,total):
+        reference_captions = all_reference_captions[idx]
+        predicted_caption = all_predicted_captions[idx]
+        bleu1_score += sentence_bleu(reference_captions, predicted_caption,
                                weights=(1, 0, 0, 0), smoothing_function=SmoothingFunction().method1)
+    return 100 * (bleu1_score/total)
 
 
-def bleu4(reference_captions, predicted_caption):
-    return 100 * sentence_bleu(reference_captions, predicted_caption,
+def bleu4(all_reference_captions, all_predicted_captions):
+    bleu4_score = 0
+    total = len(all_reference_captions)
+    for idx in range(0,total):
+        reference_captions = all_reference_captions[idx]
+        predicted_caption = all_predicted_captions[idx]
+        bleu4_score += sentence_bleu(reference_captions, predicted_caption,
                                weights=(0, 0, 0, 1), smoothing_function=SmoothingFunction().method1)
-
-
+    return 100 * (bleu4_score/total)
 
 def get_true_captions(img_ids,coco):
     batch_captions = []
@@ -32,7 +42,7 @@ def get_true_captions(img_ids,coco):
         image_metadata = coco.imgToAnns[img_id]
         captions = []
         for metadata in image_metadata:
-            captions.append(metadata['caption']) 
+            captions.append(metadata['caption'].lower()) 
         batch_captions.append(captions)
     return batch_captions
 
@@ -42,6 +52,7 @@ def generate_text_caption(caption,vocab,max_count=20):
     #print('length of caption is {} and type is {}'.format(len(caption),type(caption)))
     for idx in range(0,len(caption)):
         img_caption = caption[idx]
+        is_processed = False
         #print('length of image caption is', len(img_caption))
         #print('image caption is',img_caption)
         for word_id in img_caption:
@@ -54,6 +65,7 @@ def generate_text_caption(caption,vocab,max_count=20):
                 sentence = ' '.join(words_sequence)
                 sentence = sentence.lower()
                 batch_caption.append(sentence)
+                is_processed = True
                 words_sequence = [] 
                 break
             words_sequence.append(word)
@@ -61,6 +73,14 @@ def generate_text_caption(caption,vocab,max_count=20):
                 sentence = ' '.join(words_sequence)
                 sentence = sentence.lower()
                 batch_caption.append(sentence)
-                words_sequence = [] 
-    #print('length of batch caption is', len(batch_caption))
+                is_processed = True
+                words_sequence = []
+        if is_processed == False:
+            #print("No caption is added for this image")
+            sentence = ' '.join(words_sequence)
+            sentence = sentence.lower()
+            batch_caption.append(sentence)
+            #print("Image {} caption curr_sentence: {} result: {}".format(idx,sentence,batch_caption[idx]))
+#     if len(batch_caption)!=64:
+#         print("CAPTION_UTILS ERROR: Generated caption length {} is lesser than 64".format(len(batch_caption)))
     return batch_caption
