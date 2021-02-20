@@ -38,10 +38,10 @@ class encoder(nn.Module):
         """
            forward pass computation
         """
-        print('shape of input to forward',x.size())
+        #print('shape of input to forward',x.size())
         with torch.no_grad():
             x1 = self.resnet50_model(x)
-        print('shape of output from resnet',x1.size())
+        #print('shape of output from resnet',x1.size())
         x1 = x1.reshape(x1.size(0), -1)
         x1 = self.linear(x1)
         x1 = self.batchNorm(x1)
@@ -78,7 +78,7 @@ class decoder(nn.Module):
         
         return outputs
     
-    def generate_captions_deterministic(self, features,states=None,max_count = 20):
+    def generate_captions_deterministic(self, features,max_count = 20,states=None):
         #def sample(self, inputs, states=None, max_len=20):
         # takes the features from encoder and generates captions
         caption = []

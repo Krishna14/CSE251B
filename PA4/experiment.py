@@ -144,7 +144,9 @@ class Experiment(object):
             features = self.__encoder_model(inputs)
             
             #caption generation part
-            sentences = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+            pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+            sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
+
             
             if i%100 == 0:
                 #visualize image and captions
