@@ -45,6 +45,7 @@ class Experiment(object):
         self.__generation_config = config_data['generation']
         self.__epochs = config_data['experiment']['num_epochs']
         self.__early_stop_threshold = config_data['experiment']['early_stop_threshold']
+        self.__max_caption_count = config_data['experiment']['max_caption_length']
         self.__learning_rate = config_data['experiment']['learning_rate']
         self.__current_epoch = 0
         self.__training_losses = []
@@ -130,7 +131,7 @@ class Experiment(object):
         self.__encoder_model.train()
         self.__decoder_model.train()
         train_loss_batch = []
-        for i, (images, captions, lengths) in enumerate(self.__train_loader):
+        for i, (images, captions, img_ids, lengths) in enumerate(self.__train_loader):
             self.__optimizer.zero_grad()
             targets = pack_padded_sequence(captions, lengths, batch_first=True)
             if self.__use_gpu:
@@ -141,6 +142,18 @@ class Experiment(object):
                 inputs, train_labels, targets = images, captions, targets[0]
 
             features = self.__encoder_model(inputs)
+            
+            #caption generation part
+            sentences = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+            
+            if i%100 == 0:
+                #visualize image and captions
+                plt.imshow(images[0].permute(1,2,0))    
+                plt.show()
+                for num in range(0,1):
+                    sentence = sentences[num]
+                    print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
+            
             outputs = self.__decoder_model(features, train_labels, lengths)
             loss = self.__criterion(outputs, targets)
             loss = torch.unsqueeze(loss,0)
@@ -157,7 +170,7 @@ class Experiment(object):
         self.__decoder_model.eval()
         val_loss_batch = []
         with torch.no_grad():
-            for i, (images, captions, lengths) in enumerate(self.__val_loader):
+            for i, (images, captions, img_ids, lengths) in enumerate(self.__val_loader):
                 targets = pack_padded_sequence(captions, lengths, batch_first=True)
                 if self.__use_gpu:
                     inputs = images.cuda()
@@ -167,6 +180,7 @@ class Experiment(object):
                     inputs, val_labels, targets = images, captions, targets[0]
 
                 features = self.__encoder_model(inputs)
+              
                 outputs = self.__decoder_model(features, val_labels, lengths)
                 loss = self.__criterion(outputs, targets)
                 loss = torch.unsqueeze(loss,0)
@@ -186,8 +200,10 @@ class Experiment(object):
         bleu1 = 0
         bleu4 = 0
         test_loss_batch = []
+        predicted_sentences = []
+        true_sentences = []
         with torch.no_grad():
-            for iter, (images, captions, lengths) in enumerate(self.__test_loader):
+            for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
                 targets = pack_padded_sequence(captions, lengths, batch_first=True)
                 if self.__use_gpu:
                     inputs = images.cuda()
@@ -197,17 +213,32 @@ class Experiment(object):
                     inputs, test_labels, targets = images, captions, targets[0]
 
                 features = self.__encoder_model(inputs)
+                
+                #caption generation part
+                pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+                predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
+                true_sentences.extend(generate_text_caption(captions,self.__vocab,self.__max_caption_count))
+                
                 outputs = self.__decoder_model(features, test_labels, lengths)
                 loss = self.__criterion(outputs, targets)
                 loss = torch.unsqueeze(loss,0)
                 loss = loss.mean()
                 test_loss_batch.append(loss.item())
+                
+        #visualize image and captions for the first test image (for our own sake)
+        for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
+            plt.imshow(images[0].permute(1,2,0))    
+            plt.show()
+            for num in range(0,1):
+                sentence = predicted_sentences[num]
+                print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
+            break
             
         test_loss = np.mean(np.array(test_loss_batch))
-
-        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
-                                                                                               bleu1,
-                                                                                               bleu4)
+        bleu1_score = bleu1(true_sentences,predicted_sentences)
+        bleu4_score = bleu4(true_sentences,predicted_sentences)
+        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,  bleu1_score,
+                                                                                               bleu4_score)
         self.__log(result_str)
 
         return test_loss, bleu1, bleu4

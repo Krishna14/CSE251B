@@ -23,9 +23,14 @@ class encoder(nn.Module):
         """
         super(encoder, self).__init__()
         self.experiment_name = experiment_name
-        self.res50_model = models.resnet50(pretrained=True)
-        # Replacing the last layer with the linear layer
-        self.res50_model.fc = nn.Linear(self.res50_model.fc.in_features, embedding_size)
+        res50_model = models.resnet50(pretrained=True)
+        #get all the layers of resnet50
+        layers = list(res50_model.children())
+        # Removing the last layer 
+        layers = layers[:-1]
+        self.resnet50_model = nn.Sequential(*layers)
+        #replacing the last layer with linear layer
+        self.linear = nn.Linear(res50_model.fc.in_features, embedding_size)
         # Decide on the feature sizes
         self.batchNorm = nn.BatchNorm1d(embedding_size, momentum=0.01)
     
@@ -33,9 +38,14 @@ class encoder(nn.Module):
         """
            forward pass computation
         """
+        print('shape of input to forward',x.size())
         with torch.no_grad():
-            x1 = self.res50_model(x)
-            return x1
+            x1 = self.resnet50_model(x)
+        print('shape of output from resnet',x1.size())
+        x1 = x1.reshape(x1.size(0), -1)
+        x1 = self.linear(x1)
+        x1 = self.batchNorm(x1)
+        return x1
 
 class decoder(nn.Module):
     """
@@ -68,11 +78,25 @@ class decoder(nn.Module):
         
         return outputs
     
-    def generate_captions(self, features, states=None):
-        """
-            Given image features
-        """
-
+    def generate_captions_deterministic(self, features,states=None,max_count = 20):
+        #def sample(self, inputs, states=None, max_len=20):
+        # takes the features from encoder and generates captions
+        caption = []
+        features = features.unsqueeze(1)
+        for i in range(max_count): # caption of maximum length 56 seen in training set
+            lstm_outputs, states = self.sequence_model(features,states)
+            lstm_outputs = lstm_outputs.squeeze(1)
+            out = self.linear(lstm_outputs)
+            #print('shape of linear output ',out.shape())
+            last_pick = out.max(1)[1]
+            caption.append(last_pick)
+            features = self.embedding_layer(last_pick).unsqueeze(1)
+        caption = torch.stack(caption, 1) 
+        #print('Caption of one batch shape is', caption.size())
+        caption = caption.cpu().numpy()
+        return caption
+       
+    
 def get_model(config_data, vocab):
     hidden_size = config_data['model']['hidden_size']
     embedding_size = config_data['model']['embedding_size']
