@@ -62,7 +62,8 @@ class CocoDataset(data.Dataset):
         if self.do_transform:
             augment = transforms.Compose([
                 transforms.Resize(self.img_size, interpolation=2), transforms.RandomCrop(224),
-                transforms.RandomHorizontalFlip(), 
+                transforms.RandomHorizontalFlip(), #Test Performance WITH FLIP: Loss: 2.438020448481783, Bleu1: 0, Bleu4: 0
+                                                        #without flip: Test Performance: Loss: 2.4416956708786337
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
