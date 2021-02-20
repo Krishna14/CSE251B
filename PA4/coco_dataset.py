@@ -44,7 +44,7 @@ class CocoDataset(data.Dataset):
         ])
         
         self.resize = transforms.Compose(
-            [transforms.Resize(img_size, interpolation=2), transforms.CenterCrop(224)]) 
+            [transforms.Resize(img_size, interpolation=2), transforms.CenterCrop(256)]) 
                     #256-Test Performance: Loss: 3.8500789358260783 after 2 epochs best model
                     #224-Test Performance: Loss: 3.8326662144762405 after 2 epochs best model
 
@@ -61,7 +61,7 @@ class CocoDataset(data.Dataset):
         #do transformations for train data
         if self.do_transform:
             augment = transforms.Compose([
-                transforms.Resize(self.img_size, interpolation=2), transforms.RandomCrop(224),
+                transforms.Resize(self.img_size, interpolation=2), transforms.RandomCrop(256),
                 transforms.RandomHorizontalFlip(), #Test Performance WITH FLIP: Loss: 2.438020448481783, Bleu1: 0, Bleu4: 0
                                                         #without flip: Test Performance: Loss: 2.4416956708786337
                 transforms.ToTensor(),
