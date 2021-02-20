@@ -47,6 +47,7 @@ class Experiment(object):
         self.__early_stop_threshold = config_data['experiment']['early_stop_threshold']
         self.__max_caption_count = config_data['experiment']['max_caption_length']
         self.__learning_rate = config_data['experiment']['learning_rate']
+        self.__test_caption_path = config_data['dataset']['test_annotation_file_path']
         self.__current_epoch = 0
         self.__training_losses = []
         self.__val_losses = []
@@ -110,8 +111,9 @@ class Experiment(object):
                 self.__best_encoder_model = self.__encoder_model
                 self.__best_decoder_model = self.__decoder_model
                 #MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
-                torch.save(self.__best_encoder_model, self.__MODEL_NAME+"_encoder")
-                torch.save(self.__best_decoder_model, self.__MODEL_NAME+"_decoder")
+#                 torch.save(self.__best_encoder_model, self.__MODEL_NAME+"_encoder")
+#                 torch.save(self.__best_decoder_model, self.__MODEL_NAME+"_decoder")
+                self.__save_model('best_model'+self.__MODEL_NAME+'.pt')
             self.__record_stats(train_loss, val_loss)
             self.__log_epoch_stats(start_time)
             self.__save_model()
@@ -194,13 +196,18 @@ class Experiment(object):
     #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
     #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
     def test(self):
-        self__encoder_model = torch.load(self.__MODEL_NAME+"_encoder")
-        self.__decoder_model = torch.load(self.__MODEL_NAME+"_decoder")
+        state_dict = torch.load(os.path.join(self.__experiment_dir, 'latest_model.pt'))#'best_model'+self.__MODEL_NAME+'.pt'))
+        self.__encoder_model.load_state_dict(state_dict['encoder_model'])
+        self.__decoder_model.load_state_dict(state_dict['decoder_model'])
+        self.__optimizer.load_state_dict(state_dict['optimizer'])
+        coco = COCO(self.__test_caption_path)
+#         self__encoder_model = torch.load(self.__MODEL_NAME+"_encoder")
+#         self.__decoder_model = torch.load(self.__MODEL_NAME+"_decoder")
         self.__encoder_model.eval()
         self.__decoder_model.eval()
         test_loss = 0
-        bleu1 = 0
-        bleu4 = 0
+        bleu1_score = 0
+        bleu4_score = 0
         test_loss_batch = []
         predicted_sentences = []
         true_sentences = []
@@ -219,7 +226,10 @@ class Experiment(object):
                 #caption generation part
                 pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
                 predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
-                true_sentences.extend(generate_text_caption(captions,self.__vocab,self.__max_caption_count))
+                
+                
+                #print("Captions length at iter {} = {}".format(iter,len(captions)))
+                true_sentences.extend(get_true_captions(img_ids,coco))
                 
                 outputs = self.__decoder_model(features, test_labels, lengths)
                 loss = self.__criterion(outputs, targets)
@@ -227,26 +237,28 @@ class Experiment(object):
                 loss = loss.mean()
                 test_loss_batch.append(loss.item())
                 
-        #visualize image and captions for the first test image (for our own sake)
-        for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
-            plt.imshow(images[0].permute(1,2,0))    
-            plt.show()
-            for num in range(0,1):
-                sentence = predicted_sentences[num]
-                print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
-            break
+                 #visualize image and captions for the first test image (for our own sake)
+                if iter==1:
+                    for num in range(0,1):
+                        plt.imshow(images[num].permute(1,2,0))    
+                        plt.show()
+                        sentence = predicted_sentences[num]
+                    print('sentence for image # {} in iteration # {} is {}'.format(num,iter,sentence))
             
         test_loss = np.mean(np.array(test_loss_batch))
+        print("Length of true sentences = {}, length of predicted sentences = {}".format(len(true_sentences),len(predicted_sentences)))
+        
+        write_to_file_in_dir(self.__experiment_dir, 'true_sentences.txt', true_sentences)
+        write_to_file_in_dir(self.__experiment_dir, 'predicted_sentences.txt', predicted_sentences)
         bleu1_score = bleu1(true_sentences,predicted_sentences)
         bleu4_score = bleu4(true_sentences,predicted_sentences)
-        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,  bleu1_score,
-                                                                                               bleu4_score)
+        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,bleu1_score,bleu4_score)
         self.__log(result_str)
 
-        return test_loss, bleu1, bleu4
+        return test_loss, bleu1_score, bleu4_score
 
-    def __save_model(self):
-        root_model_path = os.path.join(self.__experiment_dir, 'latest_model.pt')
+    def __save_model(self,name='latest_model.pt'):
+        root_model_path = os.path.join(self.__experiment_dir, name)
         encoder_model_dict = self.__encoder_model.state_dict()
         decoder_model_dict = self.__decoder_model.state_dict()
         state_dict = {'encoder_model': encoder_model_dict, 'decoder_model': decoder_model_dict, 'optimizer': self.__optimizer.state_dict()}

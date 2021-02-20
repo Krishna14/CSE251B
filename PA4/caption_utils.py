@@ -5,6 +5,7 @@
 ################################################################################
 
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from pycocotools.coco import COCO
 
 
 # See this for input references - https://www.nltk.org/api/nltk.translate.html#nltk.translate.bleu_score.sentence_bleu
@@ -23,6 +24,17 @@ def bleu4(reference_captions, predicted_caption):
     return 100 * sentence_bleu(reference_captions, predicted_caption,
                                weights=(0, 0, 0, 1), smoothing_function=SmoothingFunction().method1)
 
+
+
+def get_true_captions(img_ids,coco):
+    batch_captions = []
+    for img_id in img_ids:
+        image_metadata = coco.imgToAnns[img_id]
+        captions = []
+        for metadata in image_metadata:
+            captions.append(metadata['caption']) 
+        batch_captions.append(captions)
+    return batch_captions
 
 def generate_text_caption(caption,vocab,max_count=20):
     batch_caption = []
