@@ -75,7 +75,6 @@ class decoder(nn.Module):
         lstm_outputs, _ = self.sequence_model(packed)
         #print(lstm_outputs.shape, lstm_outputs[0].shape)
         outputs = self.linear(lstm_outputs[0])
-        
         return outputs
     
     def generate_captions_deterministic(self, features,max_count = 20,states=None):
@@ -88,9 +87,11 @@ class decoder(nn.Module):
             lstm_outputs = lstm_outputs.squeeze(1)
             out = self.linear(lstm_outputs)
             #print('shape of linear output ',out.shape())
-            last_pick = out.max(1)[1]
-            caption.append(last_pick)
+            max_output = out.max(1)[1]
+            #print('max output = ,max_output')
+            caption.append(max_output)
             features = self.embedding_layer(last_pick).unsqueeze(1)
+        #print('Caption of one batch shape is', caption.size())    
         caption = torch.stack(caption, 1) 
         #print('Caption of one batch shape is', caption.size())
         caption = caption.cpu().numpy()
