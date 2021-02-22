@@ -8,15 +8,14 @@
     "test_annotation_file_path": "./data/annotations/captions_val2014.json",
     "images_root_dir": "./data/images/",
     "vocabulary_threshold": 2,
-    "img_size": 256,
-    "batch_size": 64,
+    "img_size": 256, 
+    "batch_size": 64, 
     "num_workers": 8
   },
   "experiment": {
     "num_epochs": 30,
     "learning_rate": 5e-4,
-    "early_stop_threshold": 5,
-    "max_caption_length": 20  
+    "early_stop_threshold": 5
   },
   "model": {
     "hidden_size": 512,
@@ -29,3 +28,4 @@
     "temperature": 0.1
   }
 }
+
