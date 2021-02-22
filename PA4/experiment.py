@@ -45,7 +45,7 @@ class Experiment(object):
         self.__generation_config = config_data['generation']
         self.__epochs = config_data['experiment']['num_epochs']
         self.__early_stop_threshold = config_data['experiment']['early_stop_threshold']
-        self.__max_caption_count = config_data['experiment']['max_caption_length']
+        self.__max_caption_count = config_data['generation']['max_length']
         self.__learning_rate = config_data['experiment']['learning_rate']
         self.__test_caption_path = config_data['dataset']['test_annotation_file_path']
         self.__current_epoch = 0
