@@ -78,7 +78,6 @@ class decoder(nn.Module):
         return outputs
     
     def generate_captions_deterministic(self, features,max_count = 20,states=None):
-        #def sample(self, inputs, states=None, max_len=20):
         # takes the features from encoder and generates captions
         caption = []
         features = features.unsqueeze(1)
