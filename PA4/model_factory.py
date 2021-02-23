@@ -89,7 +89,7 @@ class decoder(nn.Module):
             max_output = out.max(1)[1]
             #print('max output = ,max_output')
             caption.append(max_output)
-            features = self.embedding_layer(last_pick).unsqueeze(1)
+            features = self.embedding_layer(max_output).unsqueeze(1)
         #print('Caption of one batch shape is', caption.size())    
         caption = torch.stack(caption, 1) 
         #print('Caption of one batch shape is', caption.size())
