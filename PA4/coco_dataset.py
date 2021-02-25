@@ -59,8 +59,9 @@ class CocoDataset(data.Dataset):
         #do transformations for train data
         if self.do_transform:
             augment = transforms.Compose([
-                transforms.Resize(self.img_size, interpolation=2), transforms.RandomCrop(256),
-                transforms.RandomHorizontalFlip(), 
+                transforms.Resize(self.img_size, interpolation=2), transforms.RandomCrop(256),#different crops
+                transforms.RandomHorizontalFlip(), #flip
+                #transforms.RandomRotation(30), #better not to rotate, performance decreases little, seen after 2 epochs train
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])

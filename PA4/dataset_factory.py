@@ -33,7 +33,7 @@ def get_datasets(config_data):
     vocabulary = load_vocab(train_annotation_file, vocab_threshold)
 
     train_data_loader = get_coco_dataloader(train_ids_file_path, root_train, train_annotation_file, coco, vocabulary,
-                                            config_data,transform=True)
+                                            config_data,transform=True)#transformation on training set alone.
     val_data_loader = get_coco_dataloader(val_ids_file_path, root_val, train_annotation_file, coco, vocabulary,
                                           config_data)
     test_data_loader = get_coco_dataloader(test_ids_file_path, root_test, test_annotation_file, coco_test, vocabulary,

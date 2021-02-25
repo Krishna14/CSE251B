@@ -48,6 +48,8 @@ class Experiment(object):
         self.__max_caption_count = config_data['generation']['max_length']
         self.__learning_rate = config_data['experiment']['learning_rate']
         self.__test_caption_path = config_data['dataset']['test_annotation_file_path']
+        self.__train_caption_path = config_data['dataset']['training_annotation_file_path']
+        self.__experiment_name = config_data['experiment_name']
         self.__current_epoch = 0
         self.__training_losses = []
         self.__val_losses = []
@@ -63,7 +65,7 @@ class Experiment(object):
         parameters = list(self.__decoder_model.parameters()) + list(self.__encoder_model.parameters()) + list(self.__encoder_model.batchNorm.parameters())
         self.__optimizer = optim.Adam(parameters, lr=self.__learning_rate)
    
-        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
+        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs) + 'changedruntest'
         self.__use_gpu = False
         self.__init_model()
 
@@ -100,11 +102,13 @@ class Experiment(object):
         start_epoch = self.__current_epoch
         min_val_loss = float('inf')
         for epoch in range(start_epoch, self.__epochs):  # loop over the dataset multiple times
+            print ("Running %d epoch." % (epoch))
+           # self.test()
             start_time = datetime.now()
             self.__current_epoch = epoch
             train_loss = self.__train()
             val_loss = self.__val()
-            # Saving the best model here
+#             # Saving the best model here
             if(val_loss < min_val_loss):
                 print ("Saving best model after %d epochs." % (epoch))
                 min_val_loss = val_loss
@@ -133,6 +137,11 @@ class Experiment(object):
         self.__encoder_model.train()
         self.__decoder_model.train()
         train_loss_batch = []
+        predicted_sentences = []
+        true_sentences = []
+#         bleu1_score = 0
+#         bleu4_score = 0
+        #coco = COCO(self.__train_caption_path)
         for i, (images, captions, img_ids, lengths) in enumerate(self.__train_loader):
             self.__optimizer.zero_grad()
             targets = pack_padded_sequence(captions, lengths, batch_first=True)
@@ -146,17 +155,22 @@ class Experiment(object):
             features = self.__encoder_model(inputs)
             
             #caption generation part
-            pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
-            sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
+            if "stochastic" in self.__experiment_name:
+                #caption generation part
+                pred_caption = self.__decoder_model.generate_captions_stochastic(features, self.__generation_config['temperature'], self.__max_caption_count) #for caption
+                sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
+            else:
+                pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+                predicted_sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
 
-            
+            #true_sentences.extend(get_true_captions(img_ids,coco))
             if i%100 == 0:
                 #visualize image and captions
                 plt.imshow(images[0].permute(1,2,0))    
                 plt.show()
                 for num in range(0,1):
-                    sentence = sentences[num]
-                    print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
+                    sentence = predicted_sentences[num]
+                    print('TRAIN: sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
             
             outputs = self.__decoder_model(features, train_labels, lengths)
             loss = self.__criterion(outputs, targets)
@@ -165,7 +179,12 @@ class Experiment(object):
             train_loss_batch.append(loss.item())
             loss.backward()
             self.__optimizer.step()
-
+#         print("TRAIN: Length of true sentences = {}, length of predicted sentences = {}".format(len(true_sentences),len(predicted_sentences)))
+        
+#         bleu1_score = bleu1(true_sentences,predicted_sentences)
+#         bleu4_score = bleu4(true_sentences,predicted_sentences)
+        #result_str = "TRAIN Performance: Bleu1: {}, Bleu4: {}".format(bleu1_score,bleu4_score)
+        #print(result_str)
         return np.mean(np.array(train_loss_batch))
 
     # TODO: Perform one Pass on the validation set and return loss value. You may also update your best model here.
@@ -196,6 +215,7 @@ class Experiment(object):
     #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
     #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
     def test(self):
+        print('Running test on best_model'+self.__MODEL_NAME)
         state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model'+self.__MODEL_NAME+'.pt'))
         self.__encoder_model.load_state_dict(state_dict['encoder_model'])
         self.__decoder_model.load_state_dict(state_dict['decoder_model'])
@@ -225,14 +245,17 @@ class Experiment(object):
                 features = self.__encoder_model(inputs)
                 
                 #caption generation part
-                pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
-                          
-                predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
-                
-                
+                if "stochastic" in self.__experiment_name:
+                    #caption generation part
+                    pred_caption = self.__decoder_model.generate_captions_stochastic(features, self.__generation_config['temperature'], self.__max_caption_count) #for caption
+                    predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
+                else:
+                    pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+                    predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
+
                 #print("Captions length at iter {} = {}".format(iter,len(captions)))
                 true_sentences.extend(get_true_captions(img_ids,coco))
-                
+
                 #visualize image and captions for the first test image (for our own sake)
                 if iter==0:
                     for num in range(0,1):
@@ -240,16 +263,14 @@ class Experiment(object):
                         plt.show() 
                         sentence = predicted_sentences[num]
                         truth = true_sentences[num][0]
-                    print('sentence for image # {} in iteration # {} is: {}, actual: {}'.format(num,iter,sentence,truth))
-                
+                        print('TEST: sentence for image # {} in iteration # {} is: {}, actual: {}'.format(num,iter,sentence,truth))
+
                 outputs = self.__decoder_model(features, test_labels, lengths)
                 loss = self.__criterion(outputs, targets)
                 loss = torch.unsqueeze(loss,0)
                 loss = loss.mean()
-                test_loss_batch.append(loss.item())
-                
-               
-            
+                test_loss_batch.append(loss.item())     
+
         test_loss = np.mean(np.array(test_loss_batch))
         print("Length of true sentences = {}, length of predicted sentences = {}".format(len(true_sentences),len(predicted_sentences)))
         
@@ -261,6 +282,57 @@ class Experiment(object):
         self.__log(result_str)
 
         return test_loss, bleu1_score, bleu4_score
+    
+    #visualize the generated captions along with some images, for best model
+    def visualize_best_captions(self):
+        plt.axis('off')
+        best_model_name = 'best_model'+self.__MODEL_NAME+'.pt' #name it after seeing all results in the sheet.
+        print('Visualizing captions on best_model'+self.__MODEL_NAME)
+        state_dict = torch.load(os.path.join(self.__experiment_dir, best_model_name))
+        self.__encoder_model.load_state_dict(state_dict['encoder_model'])
+        self.__decoder_model.load_state_dict(state_dict['decoder_model'])
+        self.__optimizer.load_state_dict(state_dict['optimizer'])
+        coco = COCO(self.__test_caption_path)
+#         self__encoder_model = torch.load(self.__MODEL_NAME+"_encoder")
+#         self.__decoder_model = torch.load(self.__MODEL_NAME+"_decoder")
+        self.__encoder_model.eval()
+        self.__decoder_model.eval()
+        predicted_sentences = []
+        true_sentences = []
+        with torch.no_grad():
+            for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
+                #print("Inside iter = ",iter)
+                targets = pack_padded_sequence(captions, lengths, batch_first=True)
+                if self.__use_gpu:
+                    inputs = images.cuda()
+                    test_labels = captions.cuda()
+                    targets = targets[0].cuda()
+                else:
+                    inputs, test_labels, targets = images, captions, targets[0]
+
+                features = self.__encoder_model(inputs)
+                
+                #caption generation part
+                if "stochastic" in best_model_name:
+                    #caption generation part
+                    pred_caption = self.__decoder_model.generate_captions_stochastic(features, self.__generation_config['temperature'], self.__max_caption_count) #for caption
+                    predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
+                else:
+                    pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+                    predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
+
+                #print("Captions length at iter {} = {}".format(iter,len(captions)))
+                true_sentences.extend(get_true_captions(img_ids,coco))
+
+                #Take any random set of images from the test data, predict your caption for that, and plot the predicted caption                   #along with the original captions
+                if iter%100==0:
+                    for num in range(0,5):
+                        plt.imshow(images[num].permute(1,2,0))    
+                        plt.show() 
+                        sentence = predicted_sentences[num]
+                        truth = true_sentences[num]#print all 5 true captions
+                        print('sentence for image # {} in iteration # {} is: {}, actual: {}'.format(num,iter,sentence,truth))
+    
 
     def __save_model(self,name='latest_model.pt'):
         root_model_path = os.path.join(self.__experiment_dir, name)
@@ -290,6 +362,8 @@ class Experiment(object):
         train_loss = self.__training_losses[self.__current_epoch]
         val_loss = self.__val_losses[self.__current_epoch]
         summary_str = "Epoch: {}, Train Loss: {}, Val Loss: {}, Took {}, ETA: {}\n"
+#         summary_str = summary_str.format(self.__current_epoch + 1, train_loss, str(time_elapsed),
+#                                          str(time_to_completion))
         summary_str = summary_str.format(self.__current_epoch + 1, train_loss, val_loss, str(time_elapsed),
                                          str(time_to_completion))
         self.__log(summary_str, 'epoch.log')
@@ -303,5 +377,5 @@ class Experiment(object):
         plt.xlabel("Epochs")
         plt.legend(loc='best')
         plt.title(self.__name + " Stats Plot")
-        plt.savefig(os.path.join(self.__experiment_dir, "stat_plot.png"))
+        plt.savefig(os.path.join(self.__experiment_dir,self.__MODEL_NAME+"stat_plot.png"))
         plt.show()

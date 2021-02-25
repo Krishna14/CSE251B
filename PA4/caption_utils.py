@@ -16,26 +16,28 @@ from pycocotools.coco import COCO
 # Converting to lower case, Removing tokens like <start>, <end>, padding etc.
 
 def bleu1(all_reference_captions, all_predicted_captions):
+   # print(type(all_reference_captions),type(all_predicted_captions))
     bleu1_score = 0
-    total = len(all_reference_captions)
-    for idx in range(0,total):
-        reference_captions = all_reference_captions[idx]
-        predicted_caption = all_predicted_captions[idx]
-        bleu1_score += sentence_bleu(reference_captions, predicted_caption,
-                               weights=(1, 0, 0, 0), smoothing_function=SmoothingFunction().method1)
-    return 100 * (bleu1_score/total)
-
+#     total = len(all_reference_captions)
+#     for idx in range(0,total):
+#         reference_captions = all_reference_captions[idx] #list(str)
+#         predicted_caption = all_predicted_captions[idx] #string
+    bleu1_score = sentence_bleu(all_reference_captions, all_predicted_captions,
+                    weights=(1, 0, 0, 0), smoothing_function=SmoothingFunction().method1)
+    #return 100 * (bleu1_score/total)
+    return bleu1_score
 
 def bleu4(all_reference_captions, all_predicted_captions):
     bleu4_score = 0
-    total = len(all_reference_captions)
-    for idx in range(0,total):
-        reference_captions = all_reference_captions[idx]
-        predicted_caption = all_predicted_captions[idx]
-        bleu4_score += sentence_bleu(reference_captions, predicted_caption,
-                               weights=(0, 0, 0, 1), smoothing_function=SmoothingFunction().method1)
-    return 100 * (bleu4_score/total)
-
+    #total = len(all_reference_captions)
+#     for idx in range(0,total):
+#         reference_captions = all_reference_captions[idx]
+#         predicted_caption = all_predicted_captions[idx]
+    bleu4_score = sentence_bleu(all_reference_captions, all_predicted_captions,
+                              weights=(0, 0, 0, 1), smoothing_function=SmoothingFunction().method1)
+    #return 100 * (bleu4_score/total)
+    return bleu4_score
+    
 def get_true_captions(img_ids,coco):
     batch_captions = []
     for img_id in img_ids:
