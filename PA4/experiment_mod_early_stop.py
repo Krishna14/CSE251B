@@ -20,12 +20,12 @@ from file_utils import *
 from model_factory import get_model
 
 import nltk
-#nltk.download('punkt')
 
 # Class to encapsulate a neural experiment.
 # The boilerplate code to setup the experiment, log stats, checkpoints and plotting have been provided to you.
 # You only need to implement the main training logic of your experiment and implement train, val and test methods.
 # You are free to modify or restructure the code as per your convenience.
+
 class Experiment(object):
     def __init__(self, name):
         config_data = read_file_in_dir('./', name + '.json')
@@ -60,8 +60,7 @@ class Experiment(object):
         self.__criterion = nn.CrossEntropyLoss()
         parameters = list(self.__decoder_model.parameters()) + list(self.__encoder_model.parameters()) + list(self.__encoder_model.batchNorm.parameters())
         self.__optimizer = optim.Adam(parameters, lr=self.__learning_rate)
-        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs) + '_' + \
-        str(config_data['model']['embedding_size']) + '_' + str(config_data['model']['hidden_size'])
+        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
 
         self.__use_gpu = False
         self.__init_model()
@@ -130,7 +129,7 @@ class Experiment(object):
                 if stop == self.__early_stop_threshold :
                     print ("EarlyStop after %d epochs." % (epoch))
                     break
-        print ("Experiment done!")
+        print("Experiment done!")
 
     # TODO: Perform one training iteration on the whole dataset and return loss value
     def __train(self):
@@ -148,6 +147,7 @@ class Experiment(object):
                 inputs, train_labels, targets = images, captions, targets[0]
 
             features = self.__encoder_model(inputs)
+            
             # Caption generation part
             pred_captions = self.__decoder_model.generate_captions(features)
             sentences = generate_text_caption(pred_captions, self.__vocab, self.__max_caption_count)

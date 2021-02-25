@@ -19,7 +19,7 @@
   },
   "model": {
     "hidden_size": 512,
-    "embedding_size": 300,
+    "embedding_size": 100,
     "model_type": "RNN"
   },
   "generation": {

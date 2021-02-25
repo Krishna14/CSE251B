@@ -56,7 +56,8 @@ def get_coco_dataloader(img_ids_file_path, imgs_root_dir, annotation_file_path, 
                           json=annotation_file_path,
                           ids=ann_ids,
                           vocab=vocabulary,
-                          img_size=config_data['dataset']['img_size'])
+                          img_size=config_data['dataset']['img_size'], 
+                          transform=True)
     return DataLoader(dataset=dataset,
                       batch_size=config_data['dataset']['batch_size'],
                       shuffle=True,

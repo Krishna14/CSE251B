@@ -18,7 +18,7 @@
     "early_stop_threshold": 5
   },
   "model": {
-    "hidden_size": 512,
+    "hidden_size": 256,
     "embedding_size": 300,
     "model_type": "RNN"
   },
