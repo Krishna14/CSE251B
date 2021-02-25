@@ -195,8 +195,9 @@ class Experiment(object):
     # TODO: Implement your test function here. Generate sample captions and evaluate loss and
     #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
     #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
-    def test(self, temp):
-        state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model_'+self.__MODEL_NAME+'.pt'))
+    def test(self, temp, modelpath):
+#         state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model_'+self.__MODEL_NAME+'.pt'))
+        state_dict = torch.load(modelpath)
         self.__encoder_model.load_state_dict(state_dict['encoder_model'])
         self.__decoder_model.load_state_dict(state_dict['decoder_model'])
         self.__optimizer.load_state_dict(state_dict['optimizer'])
