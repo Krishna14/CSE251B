@@ -72,38 +72,57 @@ class decoder(nn.Module):
         
     def forward(self, features, captions, lengths): 
         lstm_hidden = features.unsqueeze(0) #torch.Size([1,64,512])
-        #print(lstm_hidden.shape)
+        #print("lstm hidden:",lstm_hidden.shape)
         lstm_input = self.embedding_layer(captions) #torch.Size([64, caption_length, 300])
-        #print(lstm_input.shape)
+        #print("LSTM input before padding: ",lstm_input.shape)
         #DOUBT: Ask TA whether we have to send (h_0,c_0) separately looping. BLEU score is high. ???
         packed_input = pack_padded_sequence(lstm_input, lengths, batch_first=True)# to pack the embed captions according to decreasing length  
+        #print("LSTM input after padding: {} and shape :{} ".format(packed_input.data,packed_input.data.shape))
         lstm_outputs, (h_n, c_n) = self.sequence_model(packed_input,(lstm_hidden,lstm_hidden)) 
-        #print(lstm_outputs.shape, lstm_outputs[0].shape)
+        #print("lstm outputs packed shape = ",lstm_outputs.data.shape)
         #print(h_n.shape,c_n.shape)#torch.Size([1, 64, 512]) torch.Size([1, 64, 512])
+    
         outputs = self.linear(lstm_outputs[0])
-        return outputs
+        #print("LSTM outputs shape = ",outputs.shape)
+        outs = self.softmax(outputs)
+        max_outputs = outs.max(1)[1]
+        #outputs_lengths = [len(cap) for cap in outputs]
+        return outputs[:-1],max_outputs[:-1] #outputs_lengths
     
     def generate_captions_deterministic(self, features,max_count,states=None):
-        # takes the features from encoder and generates captions
         #print(features.shape)
-        captions = torch.ones(features.size(0)).long().cuda() 
-        captions = captions.unsqueeze(0)
-        #captions = start.reshape(start.size(0), -1)
-        captions = self.embedding_layer(captions)
-        #print("captions shape after embed",captions.shape)
+        lstm_hidden = features.unsqueeze(0)
         generated_caption = []
+        #print("lstm hidden:",lstm_hidden.shape)
+        states = (lstm_hidden,lstm_hidden)
+        captions = torch.ones(features.size(0)).long().cuda() #<start>
+        generated_caption.append(captions) #<start>
+        captions = captions.unsqueeze(0)
+        captions = captions.reshape(captions.size(1), -1)
+        #print("init captions shape before embed",captions.shape)
+        captions = self.embedding_layer(captions)
+        #print("init captions shape after embed",captions.shape)
        # features = features.unsqueeze(1)
-        for i in range(max_count): # caption of maximum length 56 seen in training set
+        for i in range(max_count-1): # caption of maximum length 56 seen in training set
+            lengths = [len(cap) for cap in captions]
+            captions = pack_padded_sequence(captions, lengths, batch_first=True)# to pack the embed captions according to decreasing length  
+            #print("i = {}, captions.batch = {}, states.shape = {}".format(i,captions.batch_sizes,states[0].shape))
             lstm_outputs, states = self.sequence_model(captions,states)
-            lstm_outputs = lstm_outputs.squeeze(0)
+            #lstm_outputs = lstm_outputs.squeeze(0)
             #print('lstm output after squeeze',lstm_outputs.shape)
-            output = self.linear(lstm_outputs)
-            out = self.softmax(lstm_outputs)
+            output = self.linear(lstm_outputs[0])
+            out = self.softmax(output)
             #print('shape of softmax output ',out.shape) 
             max_output = out.max(1)[1] #Take the maximum output at each step.
-            #print('max output = ',max_output)
+            #print('max output shape = ',max_output.shape)
             generated_caption.append(max_output) 
-            captions = self.embedding_layer(max_output).unsqueeze(0)
+            captions = max_output.unsqueeze(1)
+            #print('captions shape from max_output = ',captions.shape)
+            #captions = captions.reshape(captions.size(1), -1)
+            #print("captions shape before embed",captions.shape)
+            captions = self.embedding_layer(captions)#.unsqueeze(0)
+            #print("captions shape before exiting ",captions.shape)
+            #print("i = {}, captions.batch = {}".format(i,captions.batch_sizes))
         generated_caption = torch.stack(generated_caption, 1) 
         #print('Caption of one batch shape is', generated_caption.size())
         generated_caption = generated_caption.cpu().numpy()

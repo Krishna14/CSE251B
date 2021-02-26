@@ -65,7 +65,7 @@ class Experiment(object):
         parameters = list(self.__decoder_model.parameters()) + list(self.__encoder_model.parameters()) + list(self.__encoder_model.batchNorm.parameters())
         self.__optimizer = optim.Adam(parameters, lr=self.__learning_rate)
    
-        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs) + 'changedruntest'
+        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs) + 'thurs_morning'
         self.__use_gpu = False
         self.__init_model()
 
@@ -107,50 +107,61 @@ class Experiment(object):
             start_time = datetime.now()
             self.__current_epoch = epoch
             train_loss = self.__train()
-            val_loss = self.__val()
+            print("Epoch: {}, Train Loss: {}".format(epoch,train_loss))
+            val_loss = 0#self.__val()
 #             # Saving the best model here
-            if(val_loss < min_val_loss):
-                print ("Saving best model after %d epochs." % (epoch))
-                min_val_loss = val_loss
-                self.__best_encoder_model = self.__encoder_model
-                self.__best_decoder_model = self.__decoder_model
-                #MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
-#                 torch.save(self.__best_encoder_model, self.__MODEL_NAME+"_encoder")
-#                 torch.save(self.__best_decoder_model, self.__MODEL_NAME+"_decoder")
-                self.__save_model('best_model'+self.__MODEL_NAME+'.pt')
-            self.__record_stats(train_loss, val_loss)
-            self.__log_epoch_stats(start_time)
+#             if(val_loss < min_val_loss):
+#                 print ("Saving best model after %d epochs." % (epoch))
+#                 min_val_loss = val_loss
+#                 self.__best_encoder_model = self.__encoder_model
+#                 self.__best_decoder_model = self.__decoder_model
+#                 #MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
+# #                 torch.save(self.__best_encoder_model, self.__MODEL_NAME+"_encoder")
+# #                 torch.save(self.__best_decoder_model, self.__MODEL_NAME+"_decoder")
+#                 self.__save_model('best_model'+self.__MODEL_NAME+'.pt')
+#             self.__record_stats(train_loss, val_loss)
+           # self.__log_epoch_stats(start_time)
             self.__save_model()
             #Early stop to prevent model from overfitting
-            if epoch>=self.__early_stop_threshold:
-                stop = 0
-                for i in range(0,self.__early_stop_threshold):
-                    if self.__val_losses[epoch-i] > self.__val_losses[epoch-i-1]:
-                        stop = stop + 1
-                if stop == self.__early_stop_threshold :
-                    print ("EarlyStop after %d epochs." % (epoch))
-                    break
+#             if epoch>=self.__early_stop_threshold:
+#                 stop = 0
+#                 for i in range(0,self.__early_stop_threshold):
+#                     if self.__val_losses[epoch-i] > self.__val_losses[epoch-i-1]:
+#                         stop = stop + 1
+#                 if stop == self.__early_stop_threshold :
+#                     print ("EarlyStop after %d epochs." % (epoch))
+#                     break
         print("Experiment done!")
 
     # TODO: Perform one training iteration on the whole dataset and return loss value
     def __train(self):
+        #print("Start token index = ",self.__vocab.word2idx['<start>'])
         self.__encoder_model.train()
         self.__decoder_model.train()
         train_loss_batch = []
-        predicted_sentences = []
-        true_sentences = []
+        #predicted_sentences = []
+       # true_sentences = []
 #         bleu1_score = 0
 #         bleu4_score = 0
         #coco = COCO(self.__train_caption_path)
         for i, (images, captions, img_ids, lengths) in enumerate(self.__train_loader):
             self.__optimizer.zero_grad()
-            targets = pack_padded_sequence(captions, lengths, batch_first=True)
+            #print("captions shape = ", captions.shape)#torch.Size([64, 17])
+            targets = captions#[1:, 1:] 
+#             print("targets shape before pack-padding: ",targets.shape)
+#             print("targets before pack-padding: ",targets)
+            #targets_lengths = [length-1 for length in lengths]
+            #print("targets_lengths = {},size = {}".format(targets_lengths,len(targets_lengths)))
+            targets = pack_padded_sequence(targets, lengths, batch_first=True)
+#             print("targets shape after pack-padding: ",targets.data.shape) #targets[0] is shit
+#             print("targets after pack-padding: ",targets.data)
+            #train_labels = pack_padded_sequence(captions, lengths, batch_first=True)
             if self.__use_gpu:
                 inputs = images.cuda()
-                train_labels = captions.cuda()
-                targets = targets[0].cuda()
+                train_labels = captions.cuda()#train_labels[0][:-1].cuda() #remove last <end> from inputs to decoder
+                targets = targets[0][1:].long().cuda()#remove 1st <start> 
             else:
-                inputs, train_labels, targets = images, captions, targets[0]
+                inputs, train_labels, targets = images, captions, targets[0][1:].long()
 
             features = self.__encoder_model(inputs)
             
@@ -161,19 +172,31 @@ class Experiment(object):
                 sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
             else:
                 pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
-                predicted_sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
-
-            #true_sentences.extend(get_true_captions(img_ids,coco))
+                #print("Predicted caption = ",pred_caption)
+                sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
+                
+                for num in range(0,5):
+                    print("Sentence of {} image in iter# {} = {}".format(num,i,sentences[num]))
+            
             if i%100 == 0:
                 #visualize image and captions
                 plt.imshow(images[0].permute(1,2,0))    
                 plt.show()
                 for num in range(0,1):
-                    sentence = predicted_sentences[num]
-                    print('TRAIN: sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
+                    sentence = sentences[num]
+                    print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
             
-            outputs = self.__decoder_model(features, train_labels, lengths)
-            loss = self.__criterion(outputs, targets)
+            #print("decoder inputs shape = ",train_labels.shape)
+            #lengths[-1]=lengths[-1]-1
+            outputs,argmax_outputs = self.__decoder_model(features, train_labels, lengths)
+            #print("decoder outputs shape = ",outputs.shape)
+            #print("targets shape = ",targets.shape)
+            #print("target lengths = {},size = {}".format(lengths,len(lengths)))
+            #print("decoder output lengths = {},size = {}".format(outputs_lengths,len(outputs_lengths)))
+            print("decoder outputs = {}, type = {}, shape = {}".format(argmax_outputs[0:400],type(argmax_outputs),argmax_outputs.shape))
+            print("decoder targets = {}, type = {}, shape = {}".format(targets[0:400],type(targets),targets.shape))
+            #outputs = pack_padded_sequence(outputs, lengths, batch_first=True)
+            loss = self.__criterion(outputs, targets) 
             loss = torch.unsqueeze(loss,0)
             loss = loss.mean()
             train_loss_batch.append(loss.item())
@@ -194,13 +217,15 @@ class Experiment(object):
         val_loss_batch = []
         with torch.no_grad():
             for i, (images, captions, img_ids, lengths) in enumerate(self.__val_loader):
-                targets = pack_padded_sequence(captions, lengths, batch_first=True)
+                targets = captions
+                targets = pack_padded_sequence(targets, lengths, batch_first=True,enforce_sorted=False)
                 if self.__use_gpu:
                     inputs = images.cuda()
                     val_labels = captions.cuda()
-                    targets = targets[0].cuda()
+                    #targets = targets[0].cuda()
+                    targets = targets[0][1:].long().cuda()#remove 1st <start> 
                 else:
-                    inputs, val_labels, targets = images, captions, targets[0]
+                    inputs, val_labels, targets = images, captions, targets[0][1:].long()
 
                 features = self.__encoder_model(inputs)
               
@@ -234,13 +259,14 @@ class Experiment(object):
         with torch.no_grad():
             for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
                 #print("Inside iter = ",iter)
-                targets = pack_padded_sequence(captions, lengths, batch_first=True)
+                targets = pack_padded_sequence(captions, lengths, batch_first=True,enforce_sorted=False)
                 if self.__use_gpu:
                     inputs = images.cuda()
                     test_labels = captions.cuda()
-                    targets = targets[0].cuda()
+                    #targets = targets[0].cuda()
+                    targets = targets[0][1:].long().cuda()#remove 1st <start> 
                 else:
-                    inputs, test_labels, targets = images, captions, targets[0]
+                    inputs, test_labels, targets = images, captions, targets[0][1:].long()
 
                 features = self.__encoder_model(inputs)
                 
@@ -360,12 +386,12 @@ class Experiment(object):
         time_elapsed = datetime.now() - start_time
         time_to_completion = time_elapsed * (self.__epochs - self.__current_epoch - 1)
         train_loss = self.__training_losses[self.__current_epoch]
-        val_loss = self.__val_losses[self.__current_epoch]
-        summary_str = "Epoch: {}, Train Loss: {}, Val Loss: {}, Took {}, ETA: {}\n"
-#         summary_str = summary_str.format(self.__current_epoch + 1, train_loss, str(time_elapsed),
-#                                          str(time_to_completion))
-        summary_str = summary_str.format(self.__current_epoch + 1, train_loss, val_loss, str(time_elapsed),
+       # val_loss = self.__val_losses[self.__current_epoch]
+        summary_str = "Epoch: {}, Train Loss: {}, Took {}, ETA: {}\n"
+        summary_str = summary_str.format(self.__current_epoch + 1, train_loss, str(time_elapsed),
                                          str(time_to_completion))
+#         summary_str = summary_str.format(self.__current_epoch + 1, train_loss, val_loss, str(time_elapsed),
+#                                          str(time_to_completion))
         self.__log(summary_str, 'epoch.log')
 
     def plot_stats(self):
