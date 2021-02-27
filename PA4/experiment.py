@@ -48,6 +48,7 @@ class Experiment(object):
         self.__max_caption_count = config_data['generation']['max_length']
         self.__learning_rate = config_data['experiment']['learning_rate']
         self.__test_caption_path = config_data['dataset']['test_annotation_file_path']
+        self.coco = COCO(self.__test_caption_path)
         self.__train_caption_path = config_data['dataset']['training_annotation_file_path']
         self.__experiment_name = config_data['experiment_name']
         self.__current_epoch = 0
@@ -65,7 +66,7 @@ class Experiment(object):
         parameters = list(self.__decoder_model.parameters()) + list(self.__encoder_model.parameters()) + list(self.__encoder_model.batchNorm.parameters())
         self.__optimizer = optim.Adam(parameters, lr=self.__learning_rate)
    
-        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs) + 'thurs_morning'
+        self.__MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs) + 'friday_after_class'
         self.__use_gpu = False
         self.__init_model()
 
@@ -102,35 +103,34 @@ class Experiment(object):
         start_epoch = self.__current_epoch
         min_val_loss = float('inf')
         for epoch in range(start_epoch, self.__epochs):  # loop over the dataset multiple times
-            print ("Running %d epoch." % (epoch))
-           # self.test()
+            print ("Calling test after %d epoch." % (epoch))
+            self.test()
             start_time = datetime.now()
             self.__current_epoch = epoch
             train_loss = self.__train()
-            print("Epoch: {}, Train Loss: {}".format(epoch,train_loss))
-            val_loss = 0#self.__val()
-#             # Saving the best model here
-#             if(val_loss < min_val_loss):
-#                 print ("Saving best model after %d epochs." % (epoch))
-#                 min_val_loss = val_loss
-#                 self.__best_encoder_model = self.__encoder_model
-#                 self.__best_decoder_model = self.__decoder_model
-#                 #MODEL_NAME = self.__name + '_' + str(self.__learning_rate) + '_' + str(self.__epochs)
-# #                 torch.save(self.__best_encoder_model, self.__MODEL_NAME+"_encoder")
-# #                 torch.save(self.__best_decoder_model, self.__MODEL_NAME+"_decoder")
-#                 self.__save_model('best_model'+self.__MODEL_NAME+'.pt')
-#             self.__record_stats(train_loss, val_loss)
-           # self.__log_epoch_stats(start_time)
+            #print("Epoch: {}, Train Loss: {}".format(epoch,train_loss))
+            val_loss = self.__val()
+            # Saving the best model here
+            if(val_loss < min_val_loss):
+                 print ("Saving best model after %d epochs." % (epoch))
+                 min_val_loss = val_loss
+                 self.__best_encoder_model = self.__encoder_model
+                 self.__best_decoder_model = self.__decoder_model
+                 torch.save(self.__best_encoder_model, self.__MODEL_NAME+"_encoder")
+                 torch.save(self.__best_decoder_model, self.__MODEL_NAME+"_decoder")
+                 self.__save_model('best_model'+self.__MODEL_NAME+'.pt')
+            self.__record_stats(train_loss, val_loss)
+            self.__log_epoch_stats(start_time)
             self.__save_model()
             #Early stop to prevent model from overfitting
-#             if epoch>=self.__early_stop_threshold:
-#                 stop = 0
-#                 for i in range(0,self.__early_stop_threshold):
-#                     if self.__val_losses[epoch-i] > self.__val_losses[epoch-i-1]:
-#                         stop = stop + 1
-#                 if stop == self.__early_stop_threshold :
-#                     print ("EarlyStop after %d epochs." % (epoch))
-#                     break
+            if epoch>=self.__early_stop_threshold:
+                 stop = 0
+                 for i in range(0,self.__early_stop_threshold):
+                     if self.__val_losses[epoch-i] > self.__val_losses[epoch-i-1]:
+                         stop = stop + 1
+                 if stop == self.__early_stop_threshold :
+                     print ("EarlyStop after %d epochs." % (epoch))
+                     break
         print("Experiment done!")
 
     # TODO: Perform one training iteration on the whole dataset and return loss value
@@ -146,25 +146,29 @@ class Experiment(object):
         #coco = COCO(self.__train_caption_path)
         for i, (images, captions, img_ids, lengths) in enumerate(self.__train_loader):
             self.__optimizer.zero_grad()
-            #print("captions shape = ", captions.shape)#torch.Size([64, 17])
-            targets = captions#[1:, 1:] 
+            #print("shape of imput:",images.shape)
+            #print("captions type = ", type(captions[0])) #tensor-torch.Size([64, 17])
+            #targets = captions #size([64,17]) 
+            #print("Before stack shape of targets = {} and targets = {} ".format(targets.shape,targets))
+#             targets = torch.stack(targets, 0)
+#             print("After stack shape of targets = {} and targets = {} ".format(targets.shape,targets))
 #             print("targets shape before pack-padding: ",targets.shape)
 #             print("targets before pack-padding: ",targets)
             #targets_lengths = [length-1 for length in lengths]
             #print("targets_lengths = {},size = {}".format(targets_lengths,len(targets_lengths)))
-            targets = pack_padded_sequence(targets, lengths, batch_first=True)
+#            targets = pack_padded_sequence(targets, lengths, batch_first=True)
 #             print("targets shape after pack-padding: ",targets.data.shape) #targets[0] is shit
 #             print("targets after pack-padding: ",targets.data)
             #train_labels = pack_padded_sequence(captions, lengths, batch_first=True)
             if self.__use_gpu:
                 inputs = images.cuda()
                 train_labels = captions.cuda()#train_labels[0][:-1].cuda() #remove last <end> from inputs to decoder
-                targets = targets[0][1:].long().cuda()#remove 1st <start> 
+                targets = captions[:,1:].long().cuda()#targets = targets[0][1:].long().cuda()#remove 1st <start> 
             else:
-                inputs, train_labels, targets = images, captions, targets[0][1:].long()
+                inputs, train_labels, targets = images, captions, captions[:,1:].long()
 
             features = self.__encoder_model(inputs)
-            
+            #print("Shapes of features:", features.shape)
             #caption generation part
             if "stochastic" in self.__experiment_name:
                 #caption generation part
@@ -175,8 +179,8 @@ class Experiment(object):
                 #print("Predicted caption = ",pred_caption)
                 sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
                 
-                for num in range(0,5):
-                    print("Sentence of {} image in iter# {} = {}".format(num,i,sentences[num]))
+#                 for num in range(0,5):
+#                     print("Sentence of {} image in iter# {} = {}".format(num,i,sentences[num]))
             
             if i%100 == 0:
                 #visualize image and captions
@@ -193,9 +197,13 @@ class Experiment(object):
             #print("targets shape = ",targets.shape)
             #print("target lengths = {},size = {}".format(lengths,len(lengths)))
             #print("decoder output lengths = {},size = {}".format(outputs_lengths,len(outputs_lengths)))
-            print("decoder outputs = {}, type = {}, shape = {}".format(argmax_outputs[0:400],type(argmax_outputs),argmax_outputs.shape))
-            print("decoder targets = {}, type = {}, shape = {}".format(targets[0:400],type(targets),targets.shape))
+            #print("decoder outputs = {}, type = {}, shape = {}".format(argmax_outputs[0:400],type(argmax_outputs),argmax_outputs.shape))
+            #print("decoder outputs = {}, type = {}, shape = {}".format(outputs[0:400],type(outputs),outputs.shape))
+            #print("decoder targets = {}, type = {}, shape = {}".format(targets[0:400],type(targets),targets.shape))
             #outputs = pack_padded_sequence(outputs, lengths, batch_first=True)
+            targets = torch.reshape(targets, (targets.shape[0]*targets.shape[1],1)).squeeze(1)
+            #print("decoder targets = {}, type = {}, shape = {}".format(targets[0:400],type(targets),targets.shape))
+            #print("Output shape {} and target shape {}".format(outputs.shape,targets.shape))
             loss = self.__criterion(outputs, targets) 
             loss = torch.unsqueeze(loss,0)
             loss = loss.mean()
@@ -217,19 +225,17 @@ class Experiment(object):
         val_loss_batch = []
         with torch.no_grad():
             for i, (images, captions, img_ids, lengths) in enumerate(self.__val_loader):
-                targets = captions
-                targets = pack_padded_sequence(targets, lengths, batch_first=True,enforce_sorted=False)
                 if self.__use_gpu:
                     inputs = images.cuda()
                     val_labels = captions.cuda()
                     #targets = targets[0].cuda()
-                    targets = targets[0][1:].long().cuda()#remove 1st <start> 
+                    targets = captions[:,1:].long().cuda()
                 else:
-                    inputs, val_labels, targets = images, captions, targets[0][1:].long()
+                    inputs, val_labels, targets = images, captions, captions[:,1:].long().cuda()
 
                 features = self.__encoder_model(inputs)
-              
-                outputs = self.__decoder_model(features, val_labels, lengths)
+                targets = torch.reshape(targets, (targets.shape[0]*targets.shape[1],1)).squeeze(1)  
+                outputs,_ = self.__decoder_model(features, val_labels, lengths)
                 loss = self.__criterion(outputs, targets)
                 loss = torch.unsqueeze(loss,0)
                 loss = loss.mean()
@@ -240,12 +246,12 @@ class Experiment(object):
     #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
     #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
     def test(self):
-        print('Running test on best_model'+self.__MODEL_NAME)
-        state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model'+self.__MODEL_NAME+'.pt'))
-        self.__encoder_model.load_state_dict(state_dict['encoder_model'])
-        self.__decoder_model.load_state_dict(state_dict['decoder_model'])
-        self.__optimizer.load_state_dict(state_dict['optimizer'])
-        coco = COCO(self.__test_caption_path)
+       # print('Running test on best_model'+self.__MODEL_NAME)
+#         state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model'+self.__MODEL_NAME+'.pt'))
+#         self.__encoder_model.load_state_dict(state_dict['encoder_model'])
+#         self.__decoder_model.load_state_dict(state_dict['decoder_model'])
+#         self.__optimizer.load_state_dict(state_dict['optimizer'])
+        
 #         self__encoder_model = torch.load(self.__MODEL_NAME+"_encoder")
 #         self.__decoder_model = torch.load(self.__MODEL_NAME+"_decoder")
         self.__encoder_model.eval()
@@ -259,14 +265,12 @@ class Experiment(object):
         with torch.no_grad():
             for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
                 #print("Inside iter = ",iter)
-                targets = pack_padded_sequence(captions, lengths, batch_first=True,enforce_sorted=False)
                 if self.__use_gpu:
                     inputs = images.cuda()
                     test_labels = captions.cuda()
-                    #targets = targets[0].cuda()
-                    targets = targets[0][1:].long().cuda()#remove 1st <start> 
+                    targets = captions[:,1:].long().cuda()
                 else:
-                    inputs, test_labels, targets = images, captions, targets[0][1:].long()
+                    inputs, test_labels, targets = images, captions, captions[:,1:].long().cuda()
 
                 features = self.__encoder_model(inputs)
                 
@@ -280,7 +284,7 @@ class Experiment(object):
                     predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
 
                 #print("Captions length at iter {} = {}".format(iter,len(captions)))
-                true_sentences.extend(get_true_captions(img_ids,coco))
+                true_sentences.extend(get_true_captions(img_ids,self.coco))
 
                 #visualize image and captions for the first test image (for our own sake)
                 if iter==0:
@@ -291,7 +295,8 @@ class Experiment(object):
                         truth = true_sentences[num][0]
                         print('TEST: sentence for image # {} in iteration # {} is: {}, actual: {}'.format(num,iter,sentence,truth))
 
-                outputs = self.__decoder_model(features, test_labels, lengths)
+                targets = torch.reshape(targets, (targets.shape[0]*targets.shape[1],1)).squeeze(1)  
+                outputs,_ = self.__decoder_model(features, test_labels, lengths)
                 loss = self.__criterion(outputs, targets)
                 loss = torch.unsqueeze(loss,0)
                 loss = loss.mean()
@@ -386,12 +391,12 @@ class Experiment(object):
         time_elapsed = datetime.now() - start_time
         time_to_completion = time_elapsed * (self.__epochs - self.__current_epoch - 1)
         train_loss = self.__training_losses[self.__current_epoch]
-       # val_loss = self.__val_losses[self.__current_epoch]
-        summary_str = "Epoch: {}, Train Loss: {}, Took {}, ETA: {}\n"
-        summary_str = summary_str.format(self.__current_epoch + 1, train_loss, str(time_elapsed),
-                                         str(time_to_completion))
-#         summary_str = summary_str.format(self.__current_epoch + 1, train_loss, val_loss, str(time_elapsed),
+        val_loss = self.__val_losses[self.__current_epoch]
+        summary_str = "Epoch: {}, Train Loss: {}, Val Loss: {}, Took {}, ETA: {}\n"
+#         summary_str = summary_str.format(self.__current_epoch + 1, train_loss, str(time_elapsed),
 #                                          str(time_to_completion))
+        summary_str = summary_str.format(self.__current_epoch + 1, train_loss, val_loss, str(time_elapsed),
+                                         str(time_to_completion))
         self.__log(summary_str, 'epoch.log')
 
     def plot_stats(self):

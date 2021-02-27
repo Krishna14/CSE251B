@@ -73,21 +73,22 @@ class decoder(nn.Module):
     def forward(self, features, captions, lengths): 
         lstm_hidden = features.unsqueeze(0) #torch.Size([1,64,512])
         #print("lstm hidden:",lstm_hidden.shape)
-        lstm_input = self.embedding_layer(captions) #torch.Size([64, caption_length, 300])
-        #print("LSTM input before padding: ",lstm_input.shape)
+        lstm_input = self.embedding_layer(captions) #torch.Size([ caption_length,64, 300])
+        #print("LSTM input : ",lstm_input.shape)
         #DOUBT: Ask TA whether we have to send (h_0,c_0) separately looping. BLEU score is high. ???
-        packed_input = pack_padded_sequence(lstm_input, lengths, batch_first=True)# to pack the embed captions according to decreasing length  
+        #packed_input = pack_padded_sequence(lstm_input, lengths, batch_first=True)# to pack the embed captions according to decreasing length  
         #print("LSTM input after padding: {} and shape :{} ".format(packed_input.data,packed_input.data.shape))
-        lstm_outputs, (h_n, c_n) = self.sequence_model(packed_input,(lstm_hidden,lstm_hidden)) 
-        #print("lstm outputs packed shape = ",lstm_outputs.data.shape)
+        lstm_outputs, (h_n, c_n) = self.sequence_model(lstm_input,(lstm_hidden,lstm_hidden)) 
+        #print("lstm outputs packed shape = ",lstm_outputs.data.shape)  #torch.Size([ caption_length,64, hidden_size])
         #print(h_n.shape,c_n.shape)#torch.Size([1, 64, 512]) torch.Size([1, 64, 512])
-    
-        outputs = self.linear(lstm_outputs[0])
-        #print("LSTM outputs shape = ",outputs.shape)
+        #print("LSTM outputs shape = ",lstm_outputs.shape)
+        outputs = self.linear(lstm_outputs)[:,:-1]
+        #print("LSTM output after linear and clipping <end> shape = ",outputs.shape)
         outs = self.softmax(outputs)
-        max_outputs = outs.max(1)[1]
+        outputs = torch.reshape(outputs, (outputs.shape[0]*outputs.shape[1],outputs.shape[2]))
+        max_outputs = outs.max(2)[1]
         #outputs_lengths = [len(cap) for cap in outputs]
-        return outputs[:-1],max_outputs[:-1] #outputs_lengths
+        return outputs,max_outputs[:,:-1] #outputs_lengths
     
     def generate_captions_deterministic(self, features,max_count,states=None):
         #print(features.shape)
@@ -110,8 +111,8 @@ class decoder(nn.Module):
             lstm_outputs, states = self.sequence_model(captions,states)
             #lstm_outputs = lstm_outputs.squeeze(0)
             #print('lstm output after squeeze',lstm_outputs.shape)
-            output = self.linear(lstm_outputs[0])
-            out = self.softmax(output)
+            out = self.linear(lstm_outputs[0])
+            #out = self.softmax(output)
             #print('shape of softmax output ',out.shape) 
             max_output = out.max(1)[1] #Take the maximum output at each step.
             #print('max output shape = ',max_output.shape)
