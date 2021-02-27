@@ -18,25 +18,33 @@ from pycocotools.coco import COCO
 def bleu1(all_reference_captions, all_predicted_captions):
    # print(type(all_reference_captions),type(all_predicted_captions))
     bleu1_score = 0
-#     total = len(all_reference_captions)
-#     for idx in range(0,total):
-#         reference_captions = all_reference_captions[idx] #list(str)
-#         predicted_caption = all_predicted_captions[idx] #string
-    bleu1_score = sentence_bleu(all_reference_captions, all_predicted_captions,
+    total = len(all_reference_captions)
+    for idx in range(0,total):
+        reference_captions = all_reference_captions[idx] #list(str)
+        predicted_caption = all_predicted_captions[idx] #string
+        if idx==0:
+            print("Reference captions = {}, predicted caption = {}".format(reference_captions,predicted_caption))
+        bleu1_score += sentence_bleu(reference_captions, predicted_caption,
                     weights=(1, 0, 0, 0), smoothing_function=SmoothingFunction().method1)
-    #return 100 * (bleu1_score/total)
-    return bleu1_score
+    return 100 * (bleu1_score/total)
+    #return bleu1_score
+    
+# def bleu1(all_reference_captions, all_predicted_captions):
+#     bleu1_score = sentence_bleu(all_reference_captions, all_predicted_captions,
+#                      weights=(1, 0, 0, 0), smoothing_function=SmoothingFunction().method1)
+#     return bleu1_score
 
 def bleu4(all_reference_captions, all_predicted_captions):
     bleu4_score = 0
-    #total = len(all_reference_captions)
-#     for idx in range(0,total):
-#         reference_captions = all_reference_captions[idx]
-#         predicted_caption = all_predicted_captions[idx]
-    bleu4_score = sentence_bleu(all_reference_captions, all_predicted_captions,
+    total = len(all_reference_captions)
+    for idx in range(0,total):
+        reference_captions = all_reference_captions[idx]
+        predicted_caption = all_predicted_captions[idx]
+        bleu4_score += sentence_bleu(reference_captions, predicted_caption,
                               weights=(0, 0, 0, 1), smoothing_function=SmoothingFunction().method1)
-    #return 100 * (bleu4_score/total)
-    return bleu4_score
+    return 100 * (bleu4_score/total)
+    #return bleu4_score
+
     
 def get_true_captions(img_ids,coco):
     batch_captions = []
@@ -44,7 +52,7 @@ def get_true_captions(img_ids,coco):
         image_metadata = coco.imgToAnns[img_id]
         captions = []
         for metadata in image_metadata:
-            captions.append(metadata['caption'].lower()) 
+            captions.append(metadata['caption'].lower().split()) 
         batch_captions.append(captions)
     return batch_captions
 
@@ -58,30 +66,29 @@ def generate_text_caption(caption,vocab,max_count=20):
         #print('length of image caption is', len(img_caption))
         #print('image caption is',img_caption)
         for word_id in img_caption:
-            word = vocab.idx2word[word_id]
+            word = vocab.idx2word[word_id].lower()
             if word=="<start>":
                 words_sequence = [] 
                 continue
             #print('The index is {} and the word is {} '.format(word_id,word))
             if word=="<end>":
-                sentence = ' '.join(words_sequence)
-                sentence = sentence.lower()
-                batch_caption.append(sentence)
+               # sentence = ' '.join(words_sequence)
+                batch_caption.append(words_sequence)
                 is_processed = True
                 words_sequence = [] 
                 break
             words_sequence.append(word)
             if (len(words_sequence)==max_count):
-                sentence = ' '.join(words_sequence)
-                sentence = sentence.lower()
-                batch_caption.append(sentence)
+               # sentence = ' '.join(words_sequence)
+                #sentence = sentence.lower().split()
+                batch_caption.append(words_sequence)
                 is_processed = True
                 words_sequence = []
         if is_processed == False:
             #print("No caption is added for this image")
-            sentence = ' '.join(words_sequence)
-            sentence = sentence.lower()
-            batch_caption.append(sentence)
+            #sentence = ' '.join(words_sequence)
+            #sentence = sentence.lower()
+            batch_caption.append(words_sequence)
             #print("Image {} caption curr_sentence: {} result: {}".format(idx,sentence,batch_caption[idx]))
 #     if len(batch_caption)!=64:
 #         print("CAPTION_UTILS ERROR: Generated caption length {} is lesser than 64".format(len(batch_caption)))
