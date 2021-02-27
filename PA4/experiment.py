@@ -143,17 +143,17 @@ class Experiment(object):
 #         bleu4_score = 0
         #coco = COCO(self.__train_caption_path)
         for i, (images, captions, img_ids, lengths) in enumerate(self.__train_loader):
+            lengths = [length - 1 for length in lengths]
             self.__optimizer.zero_grad()
-            targets = pack_padded_sequence(captions, lengths, batch_first=True)
+            targets = pack_padded_sequence(captions[:,1:], lengths, batch_first=True)
             if self.__use_gpu:
                 inputs = images.cuda()
-                train_labels = captions.cuda()
+                train_labels = captions[:,:-1].cuda()
                 targets = targets[0].cuda()
             else:
-                inputs, train_labels, targets = images, captions, targets[0]
+                inputs, train_labels, targets = images, captions[:,:-1], targets[0]
 
             features = self.__encoder_model(inputs)
-            
             #caption generation part
             if "stochastic" in self.__experiment_name:
                 #caption generation part
@@ -173,6 +173,9 @@ class Experiment(object):
                     print('TRAIN: sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
             
             outputs = self.__decoder_model(features, train_labels, lengths)
+#             loss = self.__criterion(outputs, targets)
+#             print("train labels shape: {}".format(train_labels[:,1:].shape))
+#             print("outputs shape: {}".format(outputs.shape))
             loss = self.__criterion(outputs, targets)
             loss = torch.unsqueeze(loss,0)
             loss = loss.mean()
@@ -194,13 +197,14 @@ class Experiment(object):
         val_loss_batch = []
         with torch.no_grad():
             for i, (images, captions, img_ids, lengths) in enumerate(self.__val_loader):
-                targets = pack_padded_sequence(captions, lengths, batch_first=True)
+                lengths = [length - 1 for length in lengths]
+                targets = pack_padded_sequence(captions[:,1:], lengths, batch_first=True)
                 if self.__use_gpu:
                     inputs = images.cuda()
-                    val_labels = captions.cuda()
+                    val_labels = captions[:,:-1].cuda()
                     targets = targets[0].cuda()
                 else:
-                    inputs, val_labels, targets = images, captions, targets[0]
+                    inputs, val_labels, targets = images, captions[:,:-1], targets[0]
 
                 features = self.__encoder_model(inputs)
               
@@ -233,14 +237,15 @@ class Experiment(object):
         true_sentences = []
         with torch.no_grad():
             for iter, (images, captions, img_ids, lengths) in enumerate(self.__test_loader):
+                lengths = [length - 1 for length in lengths]
                 #print("Inside iter = ",iter)
-                targets = pack_padded_sequence(captions, lengths, batch_first=True)
+                targets = pack_padded_sequence(captions[:,1:], lengths, batch_first=True)
                 if self.__use_gpu:
                     inputs = images.cuda()
-                    test_labels = captions.cuda()
+                    test_labels = captions[:,:-1].cuda()
                     targets = targets[0].cuda()
                 else:
-                    inputs, test_labels, targets = images, captions, targets[0]
+                    inputs, test_labels, targets = images, captions[:,:-1], targets[0]
 
                 features = self.__encoder_model(inputs)
                 
