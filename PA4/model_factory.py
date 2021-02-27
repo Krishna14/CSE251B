@@ -10,6 +10,7 @@ import torch
 from vocab import *
 from torch.nn.utils.rnn import pack_padded_sequence
 import torchvision.models as models
+import numpy
 
 
 class encoder(nn.Module):
@@ -60,73 +61,56 @@ class decoder(nn.Module):
         self.embedding_layer = nn.Embedding(vocab_size, embed_size)
         
         self.hidden_size = hidden_size
+        self.experiment_name = experiment_name
         
         if(experiment_name != "vanilla_rnn"):
             self.sequence_model = nn.LSTM(input_size = embed_size,hidden_size = hidden_size, num_layers = num_layers, batch_first = True)
         else:
             # TODO: Tri please fill this function
-            self.sequence_model = nn.RNN()
+            self.sequence_model = nn.RNN(input_size = embed_size,hidden_size = hidden_size, num_layers = num_layers, batch_first = True)
 
         self.softmax = nn.Softmax(dim=1)
         self.linear = nn.Linear(hidden_size, vocab_size)
         
     def forward(self, features, captions, lengths): 
         lstm_hidden = features.unsqueeze(0) #torch.Size([1,64,512])
-        #print("lstm hidden:",lstm_hidden.shape)
         lstm_input = self.embedding_layer(captions) #torch.Size([ caption_length,64, 300])
-        #print("LSTM input : ",lstm_input.shape)
-        #DOUBT: Ask TA whether we have to send (h_0,c_0) separately looping. BLEU score is high. ???
-        #packed_input = pack_padded_sequence(lstm_input, lengths, batch_first=True)# to pack the embed captions according to decreasing length  
-        #print("LSTM input after padding: {} and shape :{} ".format(packed_input.data,packed_input.data.shape))
-        lstm_outputs, (h_n, c_n) = self.sequence_model(lstm_input,(lstm_hidden,lstm_hidden)) 
-        #print("lstm outputs packed shape = ",lstm_outputs.data.shape)  #torch.Size([ caption_length,64, hidden_size])
-        #print(h_n.shape,c_n.shape)#torch.Size([1, 64, 512]) torch.Size([1, 64, 512])
-        #print("LSTM outputs shape = ",lstm_outputs.shape)
+        
+        if(self.experiment_name != "vanilla_rnn"):
+            states = (lstm_hidden,lstm_hidden)
+        else:
+            states = lstm_hidden
+            
+        lstm_outputs, states = self.sequence_model(lstm_input,states) 
         outputs = self.linear(lstm_outputs)[:,:-1]
-        #print("LSTM output after linear and clipping <end> shape = ",outputs.shape)
         outs = self.softmax(outputs)
         outputs = torch.reshape(outputs, (outputs.shape[0]*outputs.shape[1],outputs.shape[2]))
         max_outputs = outs.max(2)[1]
-        #outputs_lengths = [len(cap) for cap in outputs]
         return outputs,max_outputs[:,:-1] #outputs_lengths
     
     def generate_captions_deterministic(self, features,max_count,states=None):
         #print(features.shape)
         lstm_hidden = features.unsqueeze(0)
         generated_caption = []
-        #print("lstm hidden:",lstm_hidden.shape)
-        states = (lstm_hidden,lstm_hidden)
+        if(self.experiment_name != "vanilla_rnn"):
+            states = (lstm_hidden,lstm_hidden)
+        else:
+            states = lstm_hidden
+        
         captions = torch.ones(features.size(0)).long().cuda() #<start>
         generated_caption.append(captions) #<start>
         captions = captions.unsqueeze(0)
         captions = captions.reshape(captions.size(1), -1)
-        #print("init captions shape before embed",captions.shape)
         captions = self.embedding_layer(captions)
-        #print("init captions shape after embed",captions.shape)
-       # features = features.unsqueeze(1)
         for i in range(max_count-1): # caption of maximum length 56 seen in training set
-            lengths = [len(cap) for cap in captions]
-            captions = pack_padded_sequence(captions, lengths, batch_first=True)# to pack the embed captions according to decreasing length  
-            #print("i = {}, captions.batch = {}, states.shape = {}".format(i,captions.batch_sizes,states[0].shape))
             lstm_outputs, states = self.sequence_model(captions,states)
-            #lstm_outputs = lstm_outputs.squeeze(0)
-            #print('lstm output after squeeze',lstm_outputs.shape)
-            out = self.linear(lstm_outputs[0])
-            #out = self.softmax(output)
-            #print('shape of softmax output ',out.shape) 
-            max_output = out.max(1)[1] #Take the maximum output at each step.
-            #print('max output shape = ',max_output.shape)
-            generated_caption.append(max_output) 
-            captions = max_output.unsqueeze(1)
-            #print('captions shape from max_output = ',captions.shape)
-            #captions = captions.reshape(captions.size(1), -1)
-            #print("captions shape before embed",captions.shape)
+            out = self.linear(lstm_outputs)
+            max_output = out.max(2)[1] #Take the maximum output at each step.
+            generated_caption.append(max_output.squeeze(1)) 
+            captions = max_output#.unsqueeze(1)
             captions = self.embedding_layer(captions)#.unsqueeze(0)
-            #print("captions shape before exiting ",captions.shape)
-            #print("i = {}, captions.batch = {}".format(i,captions.batch_sizes))
         generated_caption = torch.stack(generated_caption, 1) 
-        #print('Caption of one batch shape is', generated_caption.size())
-        generated_caption = generated_caption.cpu().numpy()
+        generated_caption = generated_caption.cpu().numpy()#numpy.asarray(generated_caption)
         return generated_caption
     
     def generate_captions_stochastic(self, features, temperature, max_count, states=None):
@@ -175,10 +159,125 @@ def get_model(config_data, vocab):
         LSTM_decoder = decoder(embedding_size, hidden_size, vocab_size, experiment_name)
         return CNN_encoder, LSTM_decoder
     elif (experiment_name == "vanilla_rnn"):
-        raise NotImplementedError("{} Not Implemented".format(experiment_name))
+        CNN_encoder = encoder(experiment_name, hidden_size)
+        rnn_decoder = decoder(embedding_size, hidden_size, vocab_size, experiment_name)
+        return CNN_encoder, rnn_decoder
 #     elif (experiment_name == "final_experiment"):
 #         raise NotImplementedError("{} Not Implemented".format(experiment_name))
     else:
         raise NotImplementedError("{} wrong experiment name".format(experiment_name))
     
     #return 
+'''
+
+class encoder(nn.Module):
+    """
+        Defines the encoder for the image captioning task
+    """
+    # TODO: Check the number of classes for the output of the linear layer
+    def __init__(self, experiment_name, embedding_size):
+        """
+            Initialize the experiment name
+        """
+        super(encoder, self).__init__()
+        self.experiment_name = experiment_name
+        res50_model = models.resnet50(pretrained=True)
+        #get all the layers of resnet50
+        layers = list(res50_model.children())
+        # Removing the last layer 
+        layers = layers[:-1]
+        self.resnet50_model = nn.Sequential(*layers)
+        #replacing the last layer with linear layer
+        self.linear = nn.Linear(res50_model.fc.in_features, embedding_size)
+        # Decide on the feature sizes
+        self.batchNorm = nn.BatchNorm1d(embedding_size, momentum=0.01)
+    
+    def forward(self, x):
+        """
+           forward pass computation
+        """
+        #print('shape of input to forward',x.size())
+        with torch.no_grad():
+            x1 = self.resnet50_model(x)
+        #print('shape of output from resnet',x1.size())
+        x1 = x1.reshape(x1.size(0), -1)
+        x1 = self.linear(x1)
+        x1 = self.batchNorm(x1)
+        return x1
+
+class decoder(nn.Module):
+    """
+        Decoder implementation
+    """
+    def __init__(self, embed_size, hidden_size, vocab_size, experiment_name, num_layers=1):
+        
+        super(decoder, self).__init__()
+        
+        self.embedding_layer = nn.Embedding(vocab_size, embed_size)
+        
+        if(experiment_name != "vanilla_rnn"):
+            self.sequence_model = nn.LSTM(input_size = embed_size,hidden_size = hidden_size, num_layers = num_layers, batch_first = True)
+        else:
+            # TODO: Tri please fill this function
+            self.sequence_model = nn.RNN()
+
+        self.linear = nn.Linear(hidden_size, vocab_size)
+        #self.max_length = max_length
+        
+    
+    def forward(self, features, captions, lengths):
+        #captions = captions[:, :-1]
+        embed = self.embedding_layer(captions)
+        embed = torch.cat((features.unsqueeze(1), embed), dim = 1)
+        packed = pack_padded_sequence(embed, lengths, batch_first=True)
+        lstm_outputs, _ = self.sequence_model(packed)
+        #print(lstm_outputs.shape, lstm_outputs[0].shape)
+        outputs = self.linear(lstm_outputs[0])
+        return outputs,None
+    
+    def generate_captions_deterministic(self, features,max_count = 20,states=None):
+        # takes the features from encoder and generates captions
+        caption = []
+        features = features.unsqueeze(1)
+        for i in range(max_count): # caption of maximum length 56 seen in training set
+            lstm_outputs, states = self.sequence_model(features,states)
+            lstm_outputs = lstm_outputs.squeeze(1)
+            out = self.linear(lstm_outputs)
+            #print('shape of linear output ',out.shape())
+            max_output = out.max(1)[1]
+            #print('max output = ,max_output')
+            caption.append(max_output)
+            features = self.embedding_layer(max_output).unsqueeze(1)
+        #print('Caption of one batch shape is', caption.size())    
+        caption = torch.stack(caption, 1) 
+        #print('Caption of one batch shape is', caption.size())
+        caption = caption.cpu().numpy()
+        return caption
+       
+    
+def get_model(config_data, vocab):
+    hidden_size = config_data['model']['hidden_size']
+    embedding_size = config_data['model']['embedding_size']
+    model_type = config_data['model']['model_type']
+    experiment_name = config_data['experiment_name']
+    vocab_threshold = config_data['dataset']['vocabulary_threshold']
+    trainingAnnotationFile = config_data['dataset']['training_annotation_file_path']
+    
+    # Load the vocab
+    savedVocab = load_vocab(trainingAnnotationFile, vocab_threshold)
+    vocab_size = len(savedVocab)
+    # Check for experiment_name as "baseline_deterministic"
+    if(experiment_name == "baseline_deterministic"):
+        # Here, we have the Convolutional Neural Network Encoder
+        CNN_encoder = encoder(experiment_name, embedding_size)
+        LSTM_decoder = decoder(embedding_size, hidden_size, vocab_size, experiment_name)
+        return CNN_encoder, LSTM_decoder
+    elif (experiment_name == "baseline_stochastic"):
+        raise NotImplementedError("{} Not Implemented".format(experiment_name))
+    elif (experiment_name == "vanilla_rnn"):
+        raise NotImplementedError("{} Not Implemented".format(experiment_name))
+    elif (experiment_name == "final_experiment"):
+        raise NotImplementedError("{} Not Implemented".format(experiment_name))
+    else:
+        raise NotImplementedError("{} wrong experiment name".format(experiment_name))
+'''

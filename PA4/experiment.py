@@ -103,12 +103,12 @@ class Experiment(object):
         start_epoch = self.__current_epoch
         min_val_loss = float('inf')
         for epoch in range(start_epoch, self.__epochs):  # loop over the dataset multiple times
-            print ("Calling test after %d epoch." % (epoch))
-            self.test()
+#             if epoch%3 == 0:
+#                 print ("Calling test after %d epoch." % (epoch))
+#                 self.test()
             start_time = datetime.now()
             self.__current_epoch = epoch
             train_loss = self.__train()
-            #print("Epoch: {}, Train Loss: {}".format(epoch,train_loss))
             val_loss = self.__val()
             # Saving the best model here
             if(val_loss < min_val_loss):
@@ -139,27 +139,11 @@ class Experiment(object):
         self.__encoder_model.train()
         self.__decoder_model.train()
         train_loss_batch = []
-        #predicted_sentences = []
-       # true_sentences = []
-#         bleu1_score = 0
-#         bleu4_score = 0
+
         #coco = COCO(self.__train_caption_path)
         for i, (images, captions, img_ids, lengths) in enumerate(self.__train_loader):
             self.__optimizer.zero_grad()
-            #print("shape of imput:",images.shape)
-            #print("captions type = ", type(captions[0])) #tensor-torch.Size([64, 17])
-            #targets = captions #size([64,17]) 
-            #print("Before stack shape of targets = {} and targets = {} ".format(targets.shape,targets))
-#             targets = torch.stack(targets, 0)
-#             print("After stack shape of targets = {} and targets = {} ".format(targets.shape,targets))
-#             print("targets shape before pack-padding: ",targets.shape)
-#             print("targets before pack-padding: ",targets)
-            #targets_lengths = [length-1 for length in lengths]
-            #print("targets_lengths = {},size = {}".format(targets_lengths,len(targets_lengths)))
-#            targets = pack_padded_sequence(targets, lengths, batch_first=True)
-#             print("targets shape after pack-padding: ",targets.data.shape) #targets[0] is shit
-#             print("targets after pack-padding: ",targets.data)
-            #train_labels = pack_padded_sequence(captions, lengths, batch_first=True)
+
             if self.__use_gpu:
                 inputs = images.cuda()
                 train_labels = captions.cuda()#train_labels[0][:-1].cuda() #remove last <end> from inputs to decoder
@@ -168,19 +152,14 @@ class Experiment(object):
                 inputs, train_labels, targets = images, captions, captions[:,1:].long()
 
             features = self.__encoder_model(inputs)
-            #print("Shapes of features:", features.shape)
-            #caption generation part
+
             if "stochastic" in self.__experiment_name:
                 #caption generation part
                 pred_caption = self.__decoder_model.generate_captions_stochastic(features, self.__generation_config['temperature'], self.__max_caption_count) #for caption
                 sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
             else:
                 pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
-                #print("Predicted caption = ",pred_caption)
                 sentences = generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count)
-                
-#                 for num in range(0,5):
-#                     print("Sentence of {} image in iter# {} = {}".format(num,i,sentences[num]))
             
             if i%100 == 0:
                 #visualize image and captions
@@ -190,32 +169,14 @@ class Experiment(object):
                     sentence = sentences[num]
                     print('sentence for image # {} in iteration # {} is {}'.format(num,i,sentence))
             
-            #print("decoder inputs shape = ",train_labels.shape)
-            #lengths[-1]=lengths[-1]-1
             outputs,argmax_outputs = self.__decoder_model(features, train_labels, lengths)
-            #print("decoder outputs shape = ",outputs.shape)
-            #print("targets shape = ",targets.shape)
-            #print("target lengths = {},size = {}".format(lengths,len(lengths)))
-            #print("decoder output lengths = {},size = {}".format(outputs_lengths,len(outputs_lengths)))
-            #print("decoder outputs = {}, type = {}, shape = {}".format(argmax_outputs[0:400],type(argmax_outputs),argmax_outputs.shape))
-            #print("decoder outputs = {}, type = {}, shape = {}".format(outputs[0:400],type(outputs),outputs.shape))
-            #print("decoder targets = {}, type = {}, shape = {}".format(targets[0:400],type(targets),targets.shape))
-            #outputs = pack_padded_sequence(outputs, lengths, batch_first=True)
             targets = torch.reshape(targets, (targets.shape[0]*targets.shape[1],1)).squeeze(1)
-            #print("decoder targets = {}, type = {}, shape = {}".format(targets[0:400],type(targets),targets.shape))
-            #print("Output shape {} and target shape {}".format(outputs.shape,targets.shape))
             loss = self.__criterion(outputs, targets) 
             loss = torch.unsqueeze(loss,0)
             loss = loss.mean()
             train_loss_batch.append(loss.item())
             loss.backward()
             self.__optimizer.step()
-#         print("TRAIN: Length of true sentences = {}, length of predicted sentences = {}".format(len(true_sentences),len(predicted_sentences)))
-        
-#         bleu1_score = bleu1(true_sentences,predicted_sentences)
-#         bleu4_score = bleu4(true_sentences,predicted_sentences)
-        #result_str = "TRAIN Performance: Bleu1: {}, Bleu4: {}".format(bleu1_score,bleu4_score)
-        #print(result_str)
         return np.mean(np.array(train_loss_batch))
 
     # TODO: Perform one Pass on the validation set and return loss value. You may also update your best model here.
@@ -246,14 +207,12 @@ class Experiment(object):
     #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
     #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
     def test(self):
-       # print('Running test on best_model'+self.__MODEL_NAME)
-#         state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model'+self.__MODEL_NAME+'.pt'))
-#         self.__encoder_model.load_state_dict(state_dict['encoder_model'])
-#         self.__decoder_model.load_state_dict(state_dict['decoder_model'])
-#         self.__optimizer.load_state_dict(state_dict['optimizer'])
+        print('Running test on best_model'+self.__MODEL_NAME)
+        state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model'+self.__MODEL_NAME+'.pt'))
+        self.__encoder_model.load_state_dict(state_dict['encoder_model'])
+        self.__decoder_model.load_state_dict(state_dict['decoder_model'])
+        self.__optimizer.load_state_dict(state_dict['optimizer'])
         
-#         self__encoder_model = torch.load(self.__MODEL_NAME+"_encoder")
-#         self.__decoder_model = torch.load(self.__MODEL_NAME+"_decoder")
         self.__encoder_model.eval()
         self.__decoder_model.eval()
         test_loss = 0

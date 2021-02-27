@@ -1,5 +1,5 @@
 {
-  "experiment_name": "baseline_deterministic",
+  "experiment_name": "vanilla_rnn",
   "dataset": {
     "training_ids_file_path": "./train_ids.csv",
     "validation_ids_file_path": "./val_ids.csv",
