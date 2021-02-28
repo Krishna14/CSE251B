@@ -234,13 +234,13 @@ class Experiment(object):
                 features = self.__encoder_model(inputs)
                 
                 #caption generation part
-                if "stochastic" in self.__experiment_name:
+#                 if "stochastic" in self.__experiment_name:
                     #caption generation part
-                    pred_caption = self.__decoder_model.generate_captions_stochastic(features, self.__generation_config['temperature'], self.__max_caption_count) #for caption
-                    predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
-                else:
-                    pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
-                    predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
+                pred_caption = self.__decoder_model.generate_captions_stochastic(features, self.__generation_config['temperature'], self.__max_caption_count) #for caption
+                predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
+#                 else:
+#                     pred_caption = self.__decoder_model.generate_captions_deterministic(features,self.__max_caption_count) #for caption
+#                     predicted_sentences.extend(generate_text_caption(pred_caption,self.__vocab,self.__max_caption_count))
 
                 #print("Captions length at iter {} = {}".format(iter,len(captions)))
                 true_sentences.extend(get_true_captions(img_ids,self.coco))

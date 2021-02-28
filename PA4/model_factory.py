@@ -115,27 +115,28 @@ class decoder(nn.Module):
     
     def generate_captions_stochastic(self, features, temperature, max_count, states=None):
         # takes the features from encoder and generates captions
-        caption = []
-        features = features.unsqueeze(1)
-        for i in range(max_count): # caption of maximum length 56 seen in training set
-            lstm_outputs, states = self.sequence_model(features,states)
-            lstm_outputs = lstm_outputs.squeeze(1)
+        lstm_hidden = features.unsqueeze(0)
+        generated_caption = []
+        if(self.experiment_name != "vanilla_rnn"):
+            states = (lstm_hidden,lstm_hidden)
+        else:
+            states = lstm_hidden
+        captions = torch.ones(features.size(0)).long().cuda() #<start>
+        generated_caption.append(captions) #<start>
+        captions = captions.unsqueeze(0)
+        captions = captions.reshape(captions.size(1), -1)
+        captions = self.embedding_layer(captions)
+        for i in range(max_count-1): # caption of maximum length 56 seen in training set
+            lstm_outputs, states = self.sequence_model(captions,states)
             out = self.linear(lstm_outputs) / temperature
-            out = self.softmax(out) #weighted softmax of the outputs
-            sample = torch.rand(out.shape[0], 1).cuda()
-            sums = torch.zeros(out.shape).cuda()
-            sums[:, 0:1] = out[:, 0:1]
-            for i in range(1, out.shape[1]):
-                sums[:, i:i+1] = sums[:, i-1:i] + out[:, i:i+1]
-            tmp = torch.arange(out.shape[1], 0, -1).cuda()
-            tmp2 = torch.where(sample > sums, torch.tensor(1).cuda(), torch.tensor(-1).cuda())
-            output = torch.argmin(tmp * tmp2, 1)
-            caption.append(output)
-            features = self.embedding_layer(output).unsqueeze(1)
-        caption = torch.stack(caption, 1) 
-        #print('Caption of one batch shape is', caption.size())
-        caption = caption.cpu().numpy()
-        return caption
+            out = nn.Softmax(dim=2)(out) 
+            output = torch.multinomial(out.squeeze(1), 1)
+            generated_caption.append(output.squeeze(1)) 
+            captions = output
+            captions = self.embedding_layer(captions)#.unsqueeze(0)
+        generated_caption = torch.stack(generated_caption, 1) 
+        generated_caption = generated_caption.cpu().numpy()#numpy.asarray(generated_caption)
+        return generated_caption
        
     
 def get_model(config_data, vocab):
@@ -165,6 +166,8 @@ def get_model(config_data, vocab):
 #     elif (experiment_name == "final_experiment"):
 #         raise NotImplementedError("{} Not Implemented".format(experiment_name))
     else:
-        raise NotImplementedError("{} wrong experiment name".format(experiment_name))
+        CNN_encoder = encoder(experiment_name, hidden_size)
+        LSTM_decoder = decoder(embedding_size, hidden_size, vocab_size, experiment_name)
+        return CNN_encoder, LSTM_decoder
     
    
