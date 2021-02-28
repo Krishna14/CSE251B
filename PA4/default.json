@@ -1,5 +1,5 @@
 {
-  "experiment_name": "Baseline_deterministic_Friday",
+  "experiment_name": "baseline_deterministic",
   "dataset": {
     "training_ids_file_path": "./train_ids.csv",
     "validation_ids_file_path": "./val_ids.csv",
@@ -14,18 +14,18 @@
   },
   "experiment": {
     "num_epochs": 30,
-    "learning_rate": 5e-4,
+    "learning_rate": 5e-5,
     "early_stop_threshold": 5
   },
   "model": {
-    "hidden_size": 512,
-    "embedding_size": 300,
+    "hidden_size": 768,
+    "embedding_size": 500,
     "model_type": "RNN"
   },
   "generation": {
     "max_length": 20,
     "deterministic": false,
-    "temperature": 0.1
+    "temperature": 1.0
   }
 }
 
