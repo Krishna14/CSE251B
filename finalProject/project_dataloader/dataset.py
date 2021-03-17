@@ -273,7 +273,8 @@ class ImglistToTensor(torch.nn.Module):
         Returns:
             tensor of size ``NUM_IMAGES x CHANNELS x HEIGHT x WIDTH``
         """
-        return torch.stack([transforms.functional.to_tensor(pic) for pic in img_list])
+        t = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        return torch.stack([t(transforms.functional.to_tensor(pic)) for pic in img_list])
 
 def collate_fn(data):
     """Creates mini-batch tensors from the list of tuples (image, caption)
@@ -305,4 +306,4 @@ def collate_fn(data):
         targets[i, :end] = cap[:end]
     
     # Here, we compute the images, targets, img_ids and lengths
-    return images, targets, lengths
+    return images, targets
