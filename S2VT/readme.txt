@@ -4,7 +4,7 @@ The experimentations and results provided in the paper are using MSVD dataset's 
 We experimented with MSVD dataset's video frame features, namely, Resnet101 features and InceptionV4 features, as clearly separated by the 2 folders here. The dataset we used can be taken from this link: https://drive.google.com/drive/folders/1oAAxKCs0ZjrUe7xbE6j-CqWhSubx3F1b?usp=sharing
 
 Please download the data files from the above link inside your project directory. Replace "data_path" variable with this data path, in experiment.py. 
-Sample train.ipynb notebook is provided to train the model and evaluate on test dataset. Hyperparameters can be tuned by changing their corresponding variable values in experiment.py. The evaluation metric used is METEOR score to compare with the referred S2VT paper. 
+Sample train.ipynb notebook is provided to train the model and evaluate on test dataset. Hyperparameters can be tuned by changing their corresponding variable values in experiment.py and model_factory.py. The evaluation metric used is METEOR score to compare with the referred S2VT paper. 
 
 Implementation References:
 1. https://github.com/vijayvee/video-captioning/tree/9dfd6608a520adbd94c97b8e8e8ade9e7c3536b8
