@@ -15,9 +15,7 @@ from caption_utils import *
 
 data_path = '/home/a2raju/Project' 
 # Class to encapsulate a neural experiment.
-# The boilerplate code to setup the experiment, log stats, checkpoints and plotting have been provided to you.
-# You only need to implement the main training logic of your experiment and implement train, val and test methods.
-# You are free to modify or restructure the code as per your convenience.
+# The boilerplate code to setup the experiment, log stats, checkpoints and plotting
 class Experiment(object):
     def __init__(self, name):
         self.batch_size = 32
@@ -219,9 +217,6 @@ class Experiment(object):
                 val_loss_batch.append(loss.item())
             return np.mean(np.array(val_loss_batch))
 
-    # TODO: Implement your test function here. Generate sample captions and evaluate loss and
-    #  bleu scores using the best model. Use utility functions provided to you in caption_utils.
-    #  Note than you'll need image_ids and COCO object in this case to fetch all captions to generate bleu scores.
     def test(self):
         print('Running test on best_model'+self.__MODEL_NAME)
         state_dict = torch.load(os.path.join(self.__experiment_dir, 'best_model'+self.__MODEL_NAME+'.pt'))
