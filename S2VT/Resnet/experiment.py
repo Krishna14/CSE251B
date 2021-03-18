@@ -1,4 +1,4 @@
-#Reference: PA4 Starter code of CSE 251B Winter 2021
+#Reference: PA4 Starter code of CSE 251B Winter 2021, https://gist.github.com/jeasinema/ed9236ce743c8efaf30fa2ff732749f5
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
