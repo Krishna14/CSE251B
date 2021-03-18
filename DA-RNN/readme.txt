@@ -18,6 +18,7 @@ Implementation References:
 8. https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html#torch.nn.LSTM
 9. https://pytorch.org/docs/stable/generated/torch.nn.Dropout.html
 10. https://www.nltk.org/_modules/nltk/translate/meteor_score.html
+11. https://gist.github.com/jeasinema/ed9236ce743c8efaf30fa2ff732749f5
 
 
 
