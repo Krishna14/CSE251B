@@ -9,7 +9,7 @@ Sample train.ipynb notebook is provided to train the model and evaluate on test 
 Implementation References:
 1. https://github.com/vijayvee/video-captioning/tree/9dfd6608a520adbd94c97b8e8e8ade9e7c3536b8
 2. https://github.com/Peratham/video2text.pytorch/tree/0d530e271ee47ca4aa707dfec8d6c71801277b62
-3. Starter Code given in PA4 CSE 251B Winter 2021
+3. Starter Code given in PA4 CSE 251B Winter 2021 - https://piazza.com/ucsd/winter2021/cse251b/resources PA4.zip
 4. Final code submitted for PA4 CSE 251B Winter 2021, authored by the same team (Gautham Reddy, Justin Huynh, Sreekrishna Ramaswamy,Tri Truong and Akshaya Raju)
 5. https://gist.github.com/vsubhashini/38d087e140854fee4b14
 6. https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html#torch.nn.LSTM
