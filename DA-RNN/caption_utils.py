@@ -1,4 +1,4 @@
-#Reference: PA4 starter code of CSE251B Winter 2021 & PA4 submission code from our team.
+#Reference: PA4 starter code of CSE251B Winter 2021 & PA4 submission code from our team, https://www.nltk.org/_modules/nltk/translate/meteor_score.html
 from collections import defaultdict
 from nltk.translate.meteor_score import meteor_score, single_meteor_score
 
