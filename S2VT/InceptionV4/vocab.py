@@ -1,4 +1,4 @@
-##Taken from https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/03-advanced/image_captioning/build_vocab.py
+#Reference: PA4 starter code provided in CSE 251B Winter 2021
 import os, pickle, json, csv, copy
 
 # A simple wrapper class for Vocabulary. No changes are required in this file
