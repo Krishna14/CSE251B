@@ -1,4 +1,4 @@
-### Sequence to Video Text (S2VT)
+### Sequence to Sequence – Video to Text (S2VT)
 
 This directory contains Pytorch implementation of the Sequence to Sequence – Video to Text (S2VT) model as proposed by Venugopalan, Subhashini, et al. in https://arxiv.org/pdf/1505.00487.pdf
 
