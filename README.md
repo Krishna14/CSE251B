@@ -41,3 +41,14 @@ This repository contains the details of the implementation of different programm
 # PA 4 - Collaborators - Sreekrishna, Akshaya, Gautham, Justin and Tri
 
 1. Same as PA 3
+
+2. We implemented a CNN-LSTM model for image captionining task on a subset of the COCO dataset.
+
+# Project - Sreekrishna, Akshaya, Gautham, Justin and Tri
+
+Task - Video captioning and summarization. Dataset - MSVD and ActivityNet.
+1. We have implemented four models here. 
+2. Model 1 - CNN - LSTM model
+3. Model 2 - Dual Attention + CNN - LSTM
+4. Model 3 - CNN - Transformer
+5. Model 4 - 2D + 3D MiCTNet based encoder - Transformer
